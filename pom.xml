@@ -55,6 +55,13 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
+    <!-- Flyway 12 separa el soporte de motor en módulos: `flyway-core` (12.4.0) solo trae
+         H2/SQLite/base, así que PostgreSQL exige este artefacto o el arranque falla con
+         "Unsupported Database: PostgreSQL 18.x". Versión gestionada por el BOM de Boot 4.1.1. -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.postgresql</groupId>
@@ -78,6 +85,24 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- PostgreSQL 18 real para los tests de integración (SDD §9, PRD §6: nada en memoria).
+         Testcontainers 2.x renombra los artefactos respecto de 1.x:
+         junit-jupiter -> testcontainers-junit-jupiter, postgresql -> testcontainers-postgresql. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- Fronteras de módulos (SDD §3) -->
