@@ -153,9 +153,9 @@ No declara `fecha_actualizacion` (los mensajes son inmutables).
 | `idx_usuarios_rol` | `usuarios(rol) WHERE fecha_eliminacion IS NULL` | Panel admin: usuarios por rol (solo activos) |
 | `ux_usuarios_email_activo` | UNIQUE `usuarios(lower(email)) WHERE fecha_eliminacion IS NULL` | Unicidad case-insensitive entre cuentas activas |
 | `idx_categorias_orden` | `categorias(orden)` | Reordenamiento de categorías |
-| `ux_tokens_email_activos` | `tokens_verificacion_email(usuario_id) WHERE fecha_uso IS NULL` | Invalidar tokens activos al reenviar (R11) |
-| `ux_tokens_reset_activos` | `tokens_restablecimiento_contrasena(usuario_id) WHERE fecha_uso IS NULL` | Ídem para el reset (R11) |
-| `ux_tokens_refresh_activos` | `tokens_refresh(usuario_id) WHERE fecha_uso IS NULL` | Rotación y revocación de refresh por usuario (R12) |
+| `ux_tokens_email_activos` | UNIQUE sobre `tokens_verificacion_email(usuario_id) WHERE fecha_uso IS NULL` | A lo sumo un token activo por usuario; invalidar los previos al reenviar (R11) |
+| `ux_tokens_reset_activos` | UNIQUE sobre `tokens_restablecimiento_contrasena(usuario_id) WHERE fecha_uso IS NULL` | Ídem para el reset (R11) |
+| `ux_tokens_refresh_activos` | UNIQUE sobre `tokens_refresh(usuario_id) WHERE fecha_uso IS NULL` | A lo sumo un refresh activo por usuario; rotación y revocación (R12) |
 No se declaran `idx_mensajes_conversacion` ni `idx_anuncios_estado`: quedan cubiertos por el prefijo izquierdo de los índices compuestos. La extensión `pg_trgm` la habilita el baseline.
 
 ### 3.2 Restricciones CHECK (catálogo completo)
@@ -250,7 +250,7 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | `familia_id` (refresh) | Familia de rotación; agrupa los refresh de una sesión. El reuso de un token ya rotado revoca la familia entera. | NO / — | `fecha_revocacion` (refresh, `NULL` = sin revocar) marca la revocación server-side: logout o reuso detectado. |
 ## 5. Data Integrity and Business Rules
 
-**Reglas que impone la BASE DE DATOS** (CHECKs, UNIQUEs, FKs e índices — la escritura falla con error de integridad): email único case-insensitive entre activas (índice parcial `ux_usuarios_email_activo`), nombre único de categoría (`categorias_nombre_key`), una conversación por par comprador–anuncio (`conversaciones_anuncio_id_comprador_id_key`), sin auto-conversación (`chk_conversacion_no_propia`), mensaje con contenido (`chk_mensaje_no_vacio`), precio en rango y nombres no vacíos (`chk_precio_rango`, `chk_nombre_no_vacio`), máximo 5 imágenes con arrays pareados (`chk_max_imagenes`, `chk_imagenes_pareadas`), dominios cerrados de `estado`, `estado_revision` y `rol`, consistencia del trail de moderación (`chk_revision_trail_consistente`, `chk_motivo_rechazo_obligatorio`), longitud del `icono` (`chk_icono_longitud`) y las 9 filas de FK de la sección 2 (referencias existentes).
+**Reglas que impone la BASE DE DATOS** (CHECKs, UNIQUEs, FKs e índices — la escritura falla con error de integridad): email único case-insensitive entre activas (índice parcial `ux_usuarios_email_activo`), nombre único de categoría (`categorias_nombre_key`), una conversación por par comprador–anuncio (`conversaciones_anuncio_id_comprador_id_key`), sin auto-conversación (`chk_conversacion_no_propia`), mensaje con contenido (`chk_mensaje_no_vacio`), precio en rango y nombres no vacíos (`chk_precio_rango`, `chk_nombre_no_vacio`), máximo 5 imágenes con arrays pareados (`chk_max_imagenes`, `chk_imagenes_pareadas`), dominios cerrados de `estado`, `estado_revision` y `rol`, consistencia del trail de moderación (`chk_revision_trail_consistente`, `chk_motivo_rechazo_obligatorio`), longitud del `icono` (`chk_icono_longitud`), a lo sumo un token activo por usuario y propósito (índices únicos parciales `ux_tokens_*_activos`) y las 9 filas de FK de la sección 2 (referencias existentes).
 
 **Consecuencias de los comportamientos `ON DELETE`.**
 
@@ -272,7 +272,7 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | `fecha_actualizacion` | Escrito por la aplicación en cada UPDATE (auditoría JPA); no existe trigger de BD. |
 | Creación de usuarios | La fila `usuarios` la inserta el flujo de registro; no hay trigger ni función de BD. |
 | Conteo de no leídos | Query de aplicación sobre `idx_mensajes_no_leidos` (sin función SQL privilegiada). |
-| Consumo transaccional de tokens | Un solo uso garantizado con `fecha_uso` en la misma transacción; un token nuevo invalida los activos anteriores del mismo propósito (respaldado por los índices parciales `ux_tokens_*_activos`). |
+| Consumo transaccional de tokens | Un solo uso garantizado con `fecha_uso` en la misma transacción; el reenvío marca los activos anteriores como usados ANTES de insertar el nuevo (la unicidad del token activo por usuario y propósito la impone el índice único parcial `ux_tokens_*_activos`). |
 | Baja de cuenta | `UPDATE fecha_eliminacion = now()`; nunca `DELETE` físico, por lo que los `CASCADE` hacia `usuarios(id)` no se ejecutan. |
 ## 6. Migrations and Versioning
 
