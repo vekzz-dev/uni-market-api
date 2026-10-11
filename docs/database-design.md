@@ -1,6 +1,6 @@
-# Database Design Document — Marketplace universitario
+# Database Design Document — Uni Market (marketplace universitario)
 
-Documento autónomo: describe por completo el esquema de datos del marketplace de compraventa entre estudiantes de campus universitario. Ningún conocimiento externo es necesario para leerlo.
+Documento autónomo: describe por completo el esquema de datos de **Uni Market**, el marketplace de compraventa entre estudiantes de campus universitario. Ningún conocimiento externo es necesario para leerlo.
 
 | Campo | Valor |
 |---|---|

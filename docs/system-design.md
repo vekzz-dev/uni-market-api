@@ -1,4 +1,4 @@
-# System Design Document — Marketplace universitario (API)
+# System Design Document — Uni Market (API)
 
 Documento autónomo para la implementación técnica del backend. Define el *cómo*: arquitectura, módulos, flujos, contrato y estrategia de seguridad.
 

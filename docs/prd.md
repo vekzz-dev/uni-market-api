@@ -1,4 +1,4 @@
-# PRD — Marketplace universitario
+# PRD — Uni Market (marketplace universitario)
 
 | Campo | Valor |
 |---|---|
@@ -6,7 +6,7 @@
 | Fecha | 2026-10-09 |
 | Versión | 2.0 (documento autónomo, sin dependencias externas) |
 | Audiencia | Equipo de producto, diseño, backend y clientes (web/móvil) |
-| Producto | Marketplace de compraventa entre estudiantes de campus universitario |
+| Producto | Uni Market — marketplace de compraventa entre estudiantes de campus universitario |
 | Dueño | Propietario del proyecto (auto-designado el 2026-10-10) |
 
 > **Cómo leer este PRD**: define el *por qué* (problema, usuarios, alcance), las reglas de negocio a nivel de producto y los criterios de aceptación. Cada regla se enuncia completa en este documento; no remite a fuentes externas.
