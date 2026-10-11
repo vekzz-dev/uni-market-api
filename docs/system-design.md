@@ -73,7 +73,7 @@ Estructura de paquetes bajo `com.unimarket.api`:
 | `messaging/` | Conversaciones (dedupe por par, idempotencia), mensajes (envío, historial con cursor, no leídos, lista "mis conversaciones") | `vendedor_id` derivado del anuncio; participación verificada en servicio (R9, R10) |
 | `admin/` | CRUD de categorías, listado de usuarios filtrable por rol, cambio de rol, habilitar/inhabilitar | Sin borrado físico de usuarios ni `fecha_eliminacion` desde el panel (R15) |
 | `notifications/` | Emails de confirmación y reset; envío post-commit asíncrono con backoff; reenvío con cooldown | Nunca revierte el flujo HTTP (PRD §5); adaptador Resend vía API HTTP (prod) y adaptador de log a consola (dev, imprime el token crudo) |
-| `media/` | Puerto de almacenamiento de objetos + adaptador S3-compatible; claves `anuncios/{vendedorId}/{uuid}.{ext}` | Solo expone URLs públicas; las claves jamás salen al wire (R8) |
+| `media/` | Puerto de almacenamiento de objetos + adaptadores: **filesystem** (dev, raíz configurable `${MEDIA_DIR:~/.uni-market}`, sirve `GET /media/**`) y **S3-compatible → Cloudflare R2** (prod, URL pública `r2.dev` o dominio propio); claves `anuncios/{vendedorId}/{uuid}.{ext}` | Solo expone URLs públicas; las claves jamás salen al wire (R8) |
 
 **Dependencias entre módulos** (única dirección permitida):
 
@@ -232,7 +232,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 | Tema | Decisión |
 |---|---|
-| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, API key de Resend, storage, TTLs de token, cooldown de reenvío, límites de imagen — una sola fuente de configuración de límites (R8) |
+| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, API key de Resend, storage (`MEDIA_DIR` en dev / credenciales R2 en prod, D14), TTLs de token, cooldown de reenvío, límites de imagen — una sola fuente de configuración de límites (R8) |
 | Respaldo | Backup diario automatizado de PostgreSQL con retención de 7 días (Q4, 2026-10-10) |
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
@@ -256,6 +256,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | D11 | Stack fijo: Java 21 (LTS), Spring Boot 4.1 (línea 4.x vigente, sobre Spring Framework 7 / Security 7), Spring MVC, Maven, PostgreSQL 18, OpenAPI 3.1; repositorio backend exclusivo | Java 17/25, Boot 3.5, Gradle, monorepo | Generación estable vigente al iniciar (2026-10). Nota: ni PostgreSQL ni OpenAPI publican ediciones "LTS": son sus versiones mayores actuales (PG 18 con 5 años de soporte) |
 | D12 | Email vía Resend (API HTTP) en prod; adaptador de log a consola en dev que imprime el token crudo | SDK/SMTP de Resend; Mailpit | Resend no ofrece sandbox real ni SDK oficial Java; el adaptador de log permite completar confirmación/reset en dev y mockear el puerto en tests sin dependencias externas |
 | D13 | Validación del contrato OpenAPI 100 % Java dentro de `mvn verify` (swagger-parser + guard SnakeYAML estricto); cero tooling Node/JS en repo y CI | Spectral/oasdiff en CI; `openapi-generator-maven-plugin` | Decisión del propietario: nada de npm/JS. El plugin de openapi-generator NO expone goal `validate` (solo `generate`/`help`); swagger-parser valida de verdad y el guard estricto tapa el agujero de claves duplicadas que los parsers Java ignoran. Un comando local reproduce el CI |
+| D14 | Media: adaptador **filesystem en dev** (raíz `${MEDIA_DIR:~/.uni-market}` — datos de usuario, no configuración; OS-independiente vía `user.home`) y adaptador **S3-compatible apuntando a Cloudflare R2 en prod** (URL pública `r2.dev`; un dominio propio la reemplaza después) | MinIO local en dev; uploads dentro del repo; URLs prefirmadas | Cero dependencias para correr en dev (docker-less); detrás del puerto `AlmacenObjetos` el cambio dev→prod es un bean + propiedades. R2 encaja sin costo y con API S3. `~/.config` rechazado: es para configuración, no para datos generados |
 
 ## 12. Riesgos y preguntas abiertas
 
