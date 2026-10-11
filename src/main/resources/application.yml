@@ -1,0 +1,35 @@
+# Configuración base de Uni Market API.
+# Todo valor externo se inyecta por variables de entorno (12-factor); los defaults
+# apuntan al entorno local y nunca contienen secretos reales.
+spring:
+  application:
+    name: uni-market-api
+
+  # Perfil por defecto para desarrollo local. Se sobreescribe con la variable
+  # de entorno SPRING_PROFILES_ACTIVE o con --spring.profiles.active.
+  profiles:
+    active: dev
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/unimarket}
+    username: ${DB_USER:unimarket}
+    password: ${DB_PASSWORD:unimarket}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway es dueño del esquema (DBDD §6): Hibernate solo valida.
+      ddl-auto: validate
+
+  flyway:
+    # Ubicaciones por defecto: classpath:db/migration.
+    enabled: true
+
+server:
+  port: 8080
+
+# Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
+# - identity: TTL del access token (15 min), TTL y rotación del refresh (30 días), secreto JWT.
+# - notifications: API key de Resend, remitente y política de backoff/cooldown.
+# - media: configuración del storage S3-compatible (endpoint, bucket, credenciales).
+# - catalog: límites de subida de imágenes (tamaño máximo y cantidad por anuncio).
