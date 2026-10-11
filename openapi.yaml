@@ -1,6 +1,8 @@
 openapi: 3.1.0
 info:
   title: Uni Market — API
+  contact:
+    name: Equipo Uni Market
   version: 1.0.0
   description: |
     **Fuente de verdad del contrato** de la API REST `/v1` (contract-first, PRD O6).
@@ -226,6 +228,7 @@ paths:
       tags: [Usuarios]
       operationId: leerPerfilPropio
       summary: Perfil del usuario autenticado
+      description: Lee el perfil vigente; `401` si la cuenta está inhabilitada o dada de baja (R15).
       responses:
         '200':
           description: Perfil vigente.
@@ -304,6 +307,7 @@ paths:
       tags: [Usuarios]
       operationId: eliminarAvatar
       summary: Elimina el avatar
+      description: Elimina el objeto del storage y limpia `urlAvatar` (R8).
       responses:
         '204':
           description: Avatar eliminado y `urlAvatar` limpio.
@@ -346,7 +350,7 @@ paths:
         inserciones (O3, decisión D4).
       parameters:
         - $ref: '#/components/parameters/Busqueda'
-        - $ref: '#/components/parameters/CategoriaId'
+        - $ref: '#/components/parameters/CategoriaIdQuery'
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limite'
         - name: orden
@@ -431,6 +435,8 @@ paths:
       description: |
         Ownership (R7). Escribe `estado=eliminado` — jamás borrado físico (R1):
         conserva conversaciones y objetos de imagen.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
       responses:
         '204':
           description: Anuncio dado de baja.
@@ -558,6 +564,7 @@ paths:
       operationId: listarCategorias
       summary: Categorías ordenadas por `orden`
       security: []
+      description: Lectura pública; semilla idempotente de 6 categorías base (DBDD §4).
       responses:
         '200':
           description: Listado en orden de visualización.
@@ -602,6 +609,7 @@ paths:
       tags: [Categorias]
       operationId: actualizarCategoria
       summary: Actualiza categoría (moderador)
+      description: Requiere rol `moderador` (o superior); nombre duplicado → `409`.
       parameters:
         - $ref: '#/components/parameters/CategoriaId'
       requestBody:
@@ -1017,7 +1025,7 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/EnteroId'
-    CategoriaId:
+    CategoriaIdQuery:
       name: categoriaId
       in: query
       schema:
@@ -1058,8 +1066,9 @@ components:
       name: estadoRevision
       in: query
       schema:
-        $ref: '#/components/schemas/EstadoRevision'
-      default: pendiente
+        allOf:
+          - $ref: '#/components/schemas/EstadoRevision'
+        default: pendiente
     IdempotencyKey:
       name: Idempotency-Key
       in: header
