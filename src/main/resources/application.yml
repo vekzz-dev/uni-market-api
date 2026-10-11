@@ -40,5 +40,5 @@ app:
 # Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
 # - identity: TTL y rotación del refresh (30 días).
 # - notifications: API key de Resend, remitente y política de backoff/cooldown.
-# - media: configuración del storage S3-compatible (endpoint, bucket, credenciales).
+# - media: raíz del filesystem en dev (MEDIA_DIR, D14) y credenciales R2 en prod (endpoint, bucket, keys).
 # - catalog: límites de subida de imágenes (tamaño máximo y cantidad por anuncio).
