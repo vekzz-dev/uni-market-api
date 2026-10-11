@@ -25,6 +25,14 @@ spring:
     # Ubicaciones por defecto: classpath:db/migration.
     enabled: true
 
+  servlet:
+    multipart:
+      # El contenedor acepta hasta 10 MB para que la decisión de negocio (avatar 2 MB,
+      # imágenes de anuncio 5 MB) la tome la aplicación con su 422 (R8); el default de
+      # Boot (1 MB por archivo) rechazaría antes al contenedor.
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 server:
   port: 8080
 
@@ -36,9 +44,24 @@ app:
     jwt:
       secreto: ${JWT_SECRETO:}
       ttl-acceso: 15m
+  # Correo transaccional (SDD §10, D12): `log` imprime el token en consola (dev);
+  # `resend` envía vía API HTTP con RESEND_API_KEY y RESEND_REMITENTE (prod).
+  notificaciones:
+    proveedor: ${NOTIFICACIONES_PROVEEDOR:log}
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      remitente: ${RESEND_REMITENTE:no-reply@example.com}
+  # Medios (SDD §10, D14): raíz del filesystem en dev (datos de usuario, no config).
+  # TODO(prod): adaptador R2 tras `proveedor: r2` con endpoint/bucket/keys por entorno.
+  media:
+    raiz: "${MEDIA_DIR:~/.uni-market}"
+    avatar-max-bytes: 2097152
+    tipos-avatar:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
 
 # Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
-# - identity: TTL y rotación del refresh (30 días).
-# - notifications: API key de Resend, remitente y política de backoff/cooldown.
-# - media: raíz del filesystem en dev (MEDIA_DIR, D14) y credenciales R2 en prod (endpoint, bucket, keys).
+# - identity: rotación del refresh (30 días, constante R12) y cooldown de reenvío.
 # - catalog: límites de subida de imágenes (tamaño máximo y cantidad por anuncio).

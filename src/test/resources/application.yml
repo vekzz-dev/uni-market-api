@@ -1,0 +1,26 @@
+# Valores para tests. NUNCA contiene secretos reales.
+#
+# IMPORTANTE (Boot 4.1): `optional:classpath:/application.yml` resuelve SOLO el primer
+# `application.yml` del classpath (verificado: el ClassLoader expone main+test pero Boot
+# crea una única fuente con el de test). Por tanto este archivo debe ser AUTOCONTENIDO:
+# toda propiedad que los tests necesiten (`jwt`, `multipart`, `media`) se repite aquí
+# aunque ya exista en el principal. En producción solo carga el principal (completo).
+app:
+  seguridad:
+    jwt:
+      secreto: test-secreto-local-solo-para-tests-0123456789abcdef
+      ttl-acceso: 15m
+  media:
+    raiz: "${java.io.tmpdir}/uni-market-test-media"
+    avatar-max-bytes: 2097152
+    tipos-avatar:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB

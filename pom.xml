@@ -87,6 +87,18 @@
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Slice @DataJpaTest (Boot 4 lo separa del starter-test genérico) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- TestRestTemplate de Boot 4 para integración HTTP (trae spring-boot-restclient) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-restclient</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- PostgreSQL 18 real para los tests de integración (SDD §9, PRD §6: nada en memoria).
          Testcontainers 2.x renombra los artefactos respecto de 1.x:
          junit-jupiter -> testcontainers-junit-jupiter, postgresql -> testcontainers-postgresql. -->
