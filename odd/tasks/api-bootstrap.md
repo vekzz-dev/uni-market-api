@@ -32,3 +32,8 @@ Dejar el repositorio listo para implementar los módulos del SDD: build Maven ve
 - Entorno local: JDK 25 (GraalVM LTS) + Maven 3.9.16; el target 21 se logra con `maven.compiler.release=21` (no requiere toolchain).
 - Nombres Boot 4 confirmados (guía de migración oficial): `spring-boot-starter-webmvc` (antes `web`), `spring-boot-starter-flyway` (nuevo), `spring-boot-starter-security-oauth2-resource-server`, starters de test por tecnología (`-webmvc-test`).
 - JaCoCo entra sin `check` activo: sin código de dominio, el gate de 80 % no es evaluable todavía (se activa con el módulo `identity`).
+
+## Follow-up (2026-10-10): validación del contrato sin Node
+
+Sustituido el lint con spectral (job de CI con Node) por **guardas Java dentro de `mvn verify`** (`OpenApiContractTest`): validez estructural + resolución de `$ref`s con `swagger-parser` 2.1.27, y prohibición de claves YAML duplicadas con SnakeYAML estricto (`allowDuplicateKeys=false`). El job `contract` de CI y `.spectral.yaml` se eliminaron: el repo queda **sin ninguna herramienta Node/JS** (decisión del propietario). Verificado con pruebas negativas: clave duplicada inyectada → falla; `$ref` roto inyectado → falla; restaurado → verde.
+Nota: el plugin `openapi-generator-maven-plugin` 7.14.0 NO expone un goal `validate` (solo `generate` y `help`) — descartado por eso.

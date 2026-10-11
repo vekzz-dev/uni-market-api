@@ -1,4 +1,0 @@
-# Reglas de lint del contrato OpenAPI (misma invocación que usa CI).
-# Sin este archivo, `spectral lint` falla con exit 2: "No ruleset has been found".
-extends:
-  - spectral:oas

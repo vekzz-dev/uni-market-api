@@ -87,6 +87,13 @@
       <version>${archunit.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Validación estructural del contrato OpenAPI en el build (sin Node, 100 % Java) -->
+    <dependency>
+      <groupId>io.swagger.parser.v3</groupId>
+      <artifactId>swagger-parser</artifactId>
+      <version>2.1.27</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
