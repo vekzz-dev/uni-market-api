@@ -190,7 +190,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Enumeraciones de dominio | Enums Java (`Rol`, `EstadoAnuncio`, `EstadoRevision`) con conversor `AttributeConverter`; el CHECK de BD respalda el dominio cerrado |
 | `jsonb` (imágenes) | Tipos Hypersistence o conversor propio; escritura de ambos arrays en la misma transacción que la fila (R8) |
 | Búsqueda `ILIKE` | Repositorio con `ILIKE` + escape de `%`, `_`, `\` (PRD §5); trigram lo acelera, la corrección semántica la da el escape |
-| Migraciones | Solo en este repositorio, Flyway en arranque; `V1__esquema_base.sql`, `V2__datos_categorias.sql`, `V3__tokens_identidad.sql` |
+| Migraciones | Solo en este repositorio, Flyway en arranque; `V1__esquema_base.sql`, `V2__datos_categorias.sql`, `V3__tokens_identidad.sql`; requiere el módulo `flyway-database-postgresql` (Flyway 12 ya no incluye el soporte de motor PostgreSQL) |
 
 **Correcciones aplicadas al DBDD en esta revisión (2026-10-10)**: índices parciales `ux_tokens_*_activos` (16 índices en total), `id` como desempate en `idx_anuncios_publicacion` e `idx_mensajes_conversacion_creado`, índices compuestos de participantes `(comprador_id/vendedor_id, fecha_actualizacion DESC)` para "mis conversaciones" (reemplazan los de una columna, que quedaban cubiertos como prefijo izquierdo), CHECKs de consistencia del trail de moderación y de longitud de `icono`, y `NO ACTION` explícito en las FK de tokens.
 
@@ -222,7 +222,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Slice serialización | Espejo wire `camelCase` ↔ columnas `snake_case`; payloads de errores `application/problem+json` | `@JsonTest` |
 | Integración | Flujos completos contra **PostgreSQL real** (nada en memoria — PRD §6): auth con rotación y reuso, moderación end-to-end, catálogo, chat, guards permitido/denegado | `@SpringBootTest` con contexto mínimo + Testcontainers; una instancia de PostgreSQL compartida entre clases (context caching) para no pagar arranque por suite |
 | Contrato | Guardas del contrato dentro de `mvn verify` (validez estructural + `$ref`s con swagger-parser; claves YAML duplicadas prohibidas con SnakeYAML estricto). La detección de cambios incompatibles se añadirá como guarda Java (p. ej. `openapi-diff`) cuando exista primera release del contrato | swagger-parser + SnakeYAML estricto (deps de test, sin Node) |
-| Cobertura | Gate CI: núcleo/dominio ≥ 80 % (los gates de UI viven en los repos de clientes) | JaCoCo |
+| Cobertura | Gate CI: núcleo/dominio ≥ 80 % (los gates de UI viven en los repos de clientes). **Hoy solo reporta**: se activa con el módulo `identity`, cuando exista código de dominio evaluable | JaCoCo |
 
 **Organización de la suite** (convención de los skills `java-junit` / `java-springboot-testing`): clases con sufijo `Test` y patrón AAA; `@Nested` agrupando por caso de uso; `@DisplayName` descriptivo en español; `@Tag("fast")` para la suite sin Testcontainers en el ciclo rápido de CI; datos de prueba complejos (anuncios con imágenes pareadas, usuarios por rol) generados con **Instancio**; un solo caso de comportamiento por test, independiente y en cualquier orden.
 

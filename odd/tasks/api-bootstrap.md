@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En progreso |
+| Estado | Completada (2026-10-10; follow-up: validación Java del contrato) |
 | Creado | 2026-10-10 |
 | Alcance | Scaffold del proyecto Maven (Boot 4.1 / Java 21) — sin lógica de negocio |
 | Presupuesto (heurística ~400 líneas) | ~350 líneas escritas; cabe en un PR único |
