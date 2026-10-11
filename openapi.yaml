@@ -1,0 +1,1637 @@
+openapi: 3.1.0
+info:
+  title: Uni Market — API
+  version: 1.0.0
+  description: |
+    **Fuente de verdad del contrato** de la API REST `/v1` (contract-first, PRD O6).
+    Todo cambio pasa por revisión con `oasdiff` (cambios incompatibles → revisión obligatoria).
+
+    Convenciones:
+    - Wire en `camelCase`; recursos en plural `kebab-case` (PRD §5).
+    - Errores RFC 9457 `application/problem+json`, sin stack traces ni fugas internas.
+    - Split único: `400` problema estructural (JSON inválido, parámetro fuera de dominio/rango);
+      `422` valor que viola una regla de negocio (excepciones declaradas por el PRD, p. ej. R14 rol).
+    - Envelope de colección: `datos` + `paginacion`. Cursor opaco compuesto `(fechaCreacion, id)`
+      en catálogo e historial; offset con conteo total en paneles. `limite` default 20, máximo 100.
+    - Las respuestas de login y de reset no revelan si la cuenta existe, está inhabilitada
+      o dada de baja (R13): mismo `401` genérico y respuestas genéricas idénticas.
+    - Referencias: reglas R1–R16 en `docs/prd.md`; esquema en `docs/database-design.md`;
+      arquitectura y decisiones D1–D12 en `docs/system-design.md`.
+servers:
+  - url: /v1
+tags:
+  - name: Auth
+  - name: Usuarios
+  - name: Catalogo
+  - name: Anuncios
+  - name: Categorias
+  - name: Conversaciones
+  - name: Mensajes
+  - name: Moderacion
+  - name: Administracion
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------- Auth ---
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: iniciarSesion
+      summary: Inicia sesión
+      security: []
+      description: |
+        Normaliza el email a minúsculas (R2). Exige email confirmado, cuenta habilitada
+        y sin baja (R15). Respuesta de credenciales inválidas, cuenta sin confirmar,
+        inhabilitada o dada de baja: el MISMO `401` genérico (R13).
+        Access JWT 15 min + refresh opaco 30 días persistido solo como hash (R12).
+        Rate limiting activo (Q1) → `429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sesión emitida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SesionResponse'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refrescarSesion
+      summary: Rota el refresh token
+      security: []
+      description: |
+        Rotación transaccional (R12): el anterior se marca usado y el nuevo se inserta
+        en la misma transacción, misma `familiaId` (interna). Refresh ya usado (posible
+        robo) → `401` y revocación de TODA la familia; expirado, revocado o desconocido → `401`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Nueva sesión (access + refresh nuevos).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SesionResponse'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: cerrarSesion
+      summary: Revoca el refresh token server-side
+      security: []
+      description: |
+        Revocación idempotente → **siempre `204`** (R12). No invalida el access token,
+        que expira por sí solo dentro de su TTL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Refresh revocado (o ya revocado; idempotente).
+
+  /auth/confirmar-email:
+    get:
+      tags: [Auth]
+      operationId: confirmarEmail
+      summary: Confirma el email con el token recibido por correo
+      security: []
+      description: |
+        Token crudo de un solo uso, ventana 24 horas, buscado por hash (R11).
+        El login se rechaza hasta confirmar (criterio PRD §8).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email confirmado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeConfirmacion'
+        '422':
+          description: Token inválido, expirado o ya consumido (R11).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  /auth/restablecer-contrasena:
+    post:
+      tags: [Auth]
+      operationId: solicitarRestablecimiento
+      summary: Solicita el restablecimiento de contraseña
+      security: []
+      description: |
+        No-enumeración (R13): responde EXACTAMENTE lo mismo exista o no la cuenta;
+        el email solo se envía si la cuenta existe y está activa.
+        Token de ventana 60 minutos, un solo uso, persistido como hash (R11).
+        Rate limiting → `429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestablecerSolicitudRequest'
+      responses:
+        '202':
+          description: Respuesta genérica idéntica exista o no la cuenta (R13).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeConfirmacion'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /auth/restablecer-contrasena/confirmar:
+    post:
+      tags: [Auth]
+      operationId: confirmarRestablecimiento
+      summary: Restablece la contraseña con el token
+      security: []
+      description: Token de 60 minutos de un solo uso (R11); política uniforme mínimo 8 caracteres.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestablecerConfirmacionRequest'
+      responses:
+        '204':
+          description: Contraseña restablecida.
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '422':
+          description: Token inválido/expirado/consumido o contraseña bajo la política.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  # ------------------------------------------------------------ Usuarios ---
+  /usuarios:
+    post:
+      tags: [Usuarios]
+      operationId: registrarUsuario
+      summary: Registra una cuenta (rol miembro)
+      security: []
+      description: |
+        El registro público solo crea rol `miembro` (R3). Email único case-insensitive
+        → `409` si existe cuenta activa con el mismo email en otro caso (R2). Nace sin
+        email confirmado. Rate limiting (Q1) → `429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistroRequest'
+      responses:
+        '201':
+          description: Cuenta creada (sin sesión emitida).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumen'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '409':
+          description: Email ya registrado entre cuentas activas (R2).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /usuarios/me:
+    get:
+      tags: [Usuarios]
+      operationId: leerPerfilPropio
+      summary: Perfil del usuario autenticado
+      responses:
+        '200':
+          description: Perfil vigente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumen'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+    patch:
+      tags: [Usuarios]
+      operationId: actualizarPerfil
+      summary: Actualiza el perfil
+      description: El email es de solo lectura después del registro (R2); solo `nombre` es editable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActualizarPerfilRequest'
+      responses:
+        '200':
+          description: Perfil actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumen'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+    delete:
+      tags: [Usuarios]
+      operationId: darDeBajaCuenta
+      summary: Baja de cuenta (soft-delete)
+      description: |
+        Escribe `fechaEliminacion`; jamás `DELETE` físico (R1). No destruye anuncios,
+        conversaciones ni mensajes. Deja sin sesión y sin lecturas de perfil (R15).
+      responses:
+        '204':
+          description: Cuenta dada de baja.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /usuarios/me/avatar:
+    put:
+      tags: [Usuarios]
+      operationId: subirAvatar
+      summary: Sube o reemplaza el avatar
+      description: |
+        Multipart exclusivo vía API (R8): máx. 2 MB, tipos jpeg/png/gif/webp,
+        una sola fuente de configuración de límites. El fallo no sube objetos.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Avatar actualizado (la URL viaja en el perfil).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResumen'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422':
+          description: Tamaño o tipo no permitido (R8).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    delete:
+      tags: [Usuarios]
+      operationId: eliminarAvatar
+      summary: Elimina el avatar
+      responses:
+        '204':
+          description: Avatar eliminado y `urlAvatar` limpio.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /usuarios/me/contrasena:
+    post:
+      tags: [Usuarios]
+      operationId: cambiarContrasena
+      summary: Cambia la contraseña autenticado
+      description: Política uniforme mínimo 8 caracteres (R11); `hashContrasena` jamás viaja.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarContrasenaRequest'
+      responses:
+        '204':
+          description: Contraseña actualizada.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422':
+          description: Contraseña actual incorrecta o nueva bajo la política.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  # ------------------------------------------------------------- Catalogo --
+  /anuncios:
+    get:
+      tags: [Catalogo]
+      operationId: buscarCatalogo
+      summary: Catálogo público
+      security: []
+      description: |
+        Solo `estado=disponible AND estadoRevision=aprobado` (R4). Búsqueda `q` en nombre
+        y descripción con escape de comodines `%`, `_`, `\`. Orden default `fechaCreacion DESC`
+        (también `precio`). Cursor opaco compuesto `(fechaCreacion, id)` estable ante
+        inserciones (O3, decisión D4).
+      parameters:
+        - $ref: '#/components/parameters/Busqueda'
+        - $ref: '#/components/parameters/CategoriaId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limite'
+        - name: orden
+          in: query
+          schema:
+            type: string
+            enum: [fechaCreacion, precio]
+            default: fechaCreacion
+      responses:
+        '200':
+          description: Página del catálogo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionAnuncios'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+    post:
+      tags: [Anuncios]
+      operationId: crearAnuncio
+      summary: Publica un anuncio (multipart)
+      description: |
+        Subida exclusiva multipart vía API (R8): hasta 5 imágenes, jpeg/png/gif/webp,
+        5 MB c/u; arrays `imagenUrls`/`()pareados por posición` escritos en la MISMA
+        transacción que la fila. Nace SIEMPRE `estadoRevision=pendiente`, sin excepción
+        de rol (R5). `201` + `Location`. Si el commit falla, los objetos subidos se
+        eliminan (compensación).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnuncioMultipart'
+      responses:
+        '201':
+          description: Anuncio creado, pendiente de revisión.
+          headers:
+            Location:
+              description: URL del anuncio creado.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422':
+          description: Precio fuera de rango, más de 5 imágenes, tipo/tamaño inválido o arrays desparejados (R8).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  /anuncios/{anuncioId}:
+    get:
+      tags: [Catalogo]
+      operationId: leerAnuncio
+      summary: Detalle público
+      security: []
+      description: |
+        Solo si es visible (R4). No visible o inexistente → `404` indistinguible:
+        la API no revela la existencia de anuncios no visibles.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      responses:
+        '200':
+          description: Anuncio visible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioDetalle'
+        '404':
+          description: Inexistente o no visible (indistinguible, R4).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    delete:
+      tags: [Anuncios]
+      operationId: darDeBajaAnuncio
+      summary: Da de baja el anuncio (baja lógica del vendedor)
+      description: |
+        Ownership (R7). Escribe `estado=eliminado` — jamás borrado físico (R1):
+        conserva conversaciones y objetos de imagen.
+      responses:
+        '204':
+          description: Anuncio dado de baja.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoPropietario' }
+        '404': { $ref: '#/components/responses/NoEncontradoPropio' }
+
+  /anuncios/{anuncioId}/contenido:
+    patch:
+      tags: [Anuncios]
+      operationId: editarAnuncio
+      summary: Edita el contenido del anuncio
+      description: |
+        Ownership (R7): anuncio ajeno → `403`. Cualquier edición de contenido devuelve un
+        anuncio `aprobado` o `rechazado` a `pendiente` y limpia el trail anterior
+        (R6); un `pendiente` editado permanece `pendiente`. Las imágenes se reemplazan
+        completas: los objetos reemplazados se borran del storage (R8).
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActualizarAnuncioRequest'
+      responses:
+        '200':
+          description: Anuncio actualizado (posiblemente pendiente otra vez).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoPropietario' }
+        '404': { $ref: '#/components/responses/NoEncontradoPropio' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /anuncios/{anuncioId}/visibilidad:
+    post:
+      tags: [Anuncios]
+      operationId: alternarVisibilidad
+      summary: Alterna disponible ↔ inactivo
+      description: |
+        Ownership (R7). Solo sobre anuncios con revisión `aprobada` (PRD §5);
+        otro estado de revisión → `422`.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisibilidadRequest'
+      responses:
+        '200':
+          description: Disponibilidad actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoPropietario' }
+        '404': { $ref: '#/components/responses/NoEncontradoPropio' }
+        '422':
+          description: La revisión no está aprobada (R:? PRD §5 visibilidad solo sobre aprobado).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    parameters:
+      - $ref: '#/components/parameters/AnuncioId'
+
+  /anuncios/{anuncioId}/vendido:
+    post:
+      tags: [Anuncios]
+      operationId: marcarVendido
+      summary: Marca el anuncio como vendido
+      description: Ownership (R7). `disponible|inactivo` → `vendido`.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      responses:
+        '200':
+          description: Anuncio marcado vendido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoPropietario' }
+        '404': { $ref: '#/components/responses/NoEncontradoPropio' }
+        '422':
+          description: Estado inconsistente para marcar vendido (p. ej. ya `eliminado`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  /mis-anuncios:
+    get:
+      tags: [Anuncios]
+      operationId: listarMisAnuncios
+      summary: Panel de anuncios del vendedor
+      description: |
+        Ownership garantizado como predicado de repositorio (R7): jamás devuelve filas ajenas
+        aunque el filtro se manipule. Offset + total. Cada ítem incluye `estadoRevision`
+        y `motivoRechazo` (badge del panel).
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Panel paginado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionAnunciosPanel'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  # ------------------------------------------------------------ Categorias --
+  /categorias:
+    get:
+      tags: [Categorias]
+      operationId: listarCategorias
+      summary: Categorías ordenadas por `orden`
+      security: []
+      responses:
+        '200':
+          description: Listado en orden de visualización.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionCategorias'
+    post:
+      tags: [Categorias]
+      operationId: crearCategoria
+      summary: Crea una categoría (moderador)
+      description: |
+        Requiere rol `moderador` (o superior). `orden = MAX(orden)+1` (PRD §5):
+        nunca descartadas en 0. Nombre único → `409`. `icono` máx. 10 caracteres
+        (CHECK `chk_icono_longitud`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaRequest'
+      responses:
+        '201':
+          description: Categoría creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+        '409':
+          description: Nombre de categoría duplicado (PRD §5).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /categorias/{categoriaId}:
+    patch:
+      tags: [Categorias]
+      operationId: actualizarCategoria
+      summary: Actualiza categoría (moderador)
+      parameters:
+        - $ref: '#/components/parameters/CategoriaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaRequest'
+      responses:
+        '200':
+          description: Categoría actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: Nombre duplicado.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '422': { $ref: '#/components/responses/NoProcesable' }
+    delete:
+      tags: [Categorias]
+      operationId: eliminarCategoria
+      summary: Elimina la categoría (borrado físico)
+      description: |
+        Los anuncios sobreviven con `categoriaId` nulo y dejan de coincidir con el
+        filtro por categoría (`ON DELETE SET NULL`, DBDD §5).
+      parameters:
+        - $ref: '#/components/parameters/CategoriaId'
+      responses:
+        '204':
+          description: Categoría eliminada.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # -------------------------------------------------------- Conversaciones --
+  /conversaciones:
+    post:
+      tags: [Conversaciones]
+      operationId: abrirConversacion
+      summary: Abre o reutiliza la conversación de un anuncio
+      description: |
+        Dedupe natural por UNIQUE `(anuncio_id, comprador_id)` (R9). El envío con un
+        par existente devuelve el recurso existente con `200` y el nuevo con `201`.
+        El `vendedorId` se deriva del anuncio en el servidor; cualquier `vendedorId`
+        del cliente se ignora (R9). Auto-conversación → `422`. Apertura solo sobre
+        anuncios visibles con vendedor activo (R16); anuncio inexistente o no visible
+        → `404` indistinguible.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrearConversacionRequest'
+      responses:
+        '201':
+          description: Conversación creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversacionResumen'
+        '200':
+          description: Conversación existente reutilizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversacionResumen'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404':
+          description: Anuncio inexistente o no visible (R16).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '422':
+          description: Auto-conversación (el vendedor no puede contactarse a sí mismo, R9).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+
+  /mis-conversaciones:
+    get:
+      tags: [Conversaciones]
+      operationId: listarMisConversaciones
+      summary: Conversaciones del usuario ordenadas por actividad
+      description: |
+        Como comprador O vendedor (UNION con los índices compuestos de participantes).
+        Offset + total. Cada ítem con `ultimoMensaje` y `noLeidos` (conteo explícito;
+        ningún `GET` muta `leido`, PRD §5).
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Panel de conversaciones.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionMisConversaciones'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /conversaciones/{conversacionId}:
+    get:
+      tags: [Conversaciones]
+      operationId: leerConversacion
+      summary: Detalle de conversación (solo participantes)
+      description: Solo comprador o vendedor (R10); no participante → `403`.
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+      responses:
+        '200':
+          description: Detalle con anuncio asociado y no leídos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversacionDetalle'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoParticipante' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    parameters:
+      - $ref: '#/components/parameters/ConversacionId'
+
+  /conversaciones/{conversacionId}/mensajes:
+    get:
+      tags: [Mensajes]
+      operationId: listarMensajes
+      summary: Historial inmutable con cursor hacia atrás
+      description: |
+        Solo participantes (R10). Página inicial (sin cursor) = mensajes más recientes;
+        el cursor opaco compuesto `(fechaCreacion, id)` avanza hacia atrás (D4).
+        El `GET` no muta `leido` (PRD §5).
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Página del historial.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionMensajes'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoParticipante' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Mensajes]
+      operationId: enviarMensaje
+      summary: Envía un mensaje de texto
+      description: |
+        Solo participantes (R10); no participante → `403`. La respuesta HTTP es el
+        contrato del envío (sin tiempo real). El envío exige ambos participantes
+        activos (R16).
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnviarMensajeRequest'
+      responses:
+        '201':
+          description: Mensaje enviado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeResponse'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoParticipante' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: Texto vacío o solo espacios (R10) o participante inactivo (R16).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    parameters:
+      - $ref: '#/components/parameters/ConversacionId'
+
+  /conversaciones/{conversacionId}/lecturas:
+    post:
+      tags: [Mensajes]
+      operationId: marcarLecturas
+      summary: Marca como leídos los mensajes recibidos
+      description: |
+        Acción explícita — ningún `GET` muta `leido` (PRD §5). Solo participantes (R10).
+        Sin cuerpo: marca los mensajes recibidos no leídos hasta el momento.
+      parameters:
+        - $ref: '#/components/parameters/ConversacionId'
+      responses:
+        '204':
+          description: Lecturas registradas.
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoParticipante' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    parameters:
+      - $ref: '#/components/parameters/ConversacionId'
+
+  # ------------------------------------------------------------ Moderacion --
+  /moderacion/anuncios:
+    get:
+      tags: [Moderacion]
+      operationId: listarColaModeracion
+      summary: Cola de anuncios por estado de revisión (moderador)
+      description: |
+        Requiere rol `moderador` (o superior). FIFO por `fechaCreacion ASC` (PRD §5).
+        Filtro por `estadoRevision`, default `pendiente`. Offset + total.
+      parameters:
+        - $ref: '#/components/parameters/EstadoRevision'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Panel de moderación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionAnunciosPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+
+  /moderacion/anuncios/{anuncioId}/decisiones:
+    post:
+      tags: [Moderacion]
+      operationId: decidirRevision
+      summary: Registra una decisión de revisión (aprobar, rechazar, retraer)
+      description: |
+        Requiere rol `moderador` (o superior). Única escritura de las columnas de
+        moderación (R5). NADIE decide sobre su propio anuncio → `403`, incluido
+        `moderador` y `admin`. `rechazar` exige `motivoRechazo` no vacío → `422`;
+        `retraer` aplica a un anuncio previamente `aprobado` y también exige motivo.
+        Puebla `revisadoPor` y `fechaRevision`; solo se conserva la última revisión.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionModeracionRequest'
+      responses:
+        '200':
+          description: Decisión registrada; devuelve el anuncio actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403':
+          description: Sin rol moderador, o decisión sobre anuncio propio (R5).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: Motivo vacío en rechazo/retracción o estado inconsistente con la decisión (R5).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    parameters:
+      - $ref: '#/components/parameters/AnuncioId'
+
+  # -------------------------------------------------------- Administracion --
+  /admin/usuarios:
+    get:
+      tags: [Administracion]
+      operationId: listarUsuarios
+      summary: Lista usuarios (admin)
+      description: |
+        Requiere rol `admin`. Filtro por `rol` (índice parcial solo activos);
+        offset + total. Nunca incluye cuentas dadas de baja (R1, R15). El panel
+        nunca borra usuarios físicamente ni escribe `fechaEliminacion`.
+      parameters:
+        - name: rol
+          in: query
+          schema:
+            $ref: '#/components/schemas/Rol'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Panel de usuarios.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionUsuarios'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoAdmin' }
+
+  /admin/usuarios/{usuarioId}/rol:
+    patch:
+      tags: [Administracion]
+      operationId: cambiarRol
+      summary: Cambia el rol de un usuario (admin)
+      description: |
+        Requiere rol `admin`. Exclusivo de admin y SIN auto-promoción: cambiar el
+        PROPIO rol → `403` (R14). Rol destino fuera del dominio o igual al actual →
+        `422` (R14). El cambio surte efecto en la siguiente petición
+        (la autoridad del rol se lee de la BD, D3/R3).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambioRolRequest'
+      responses:
+        '200':
+          description: Rol actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioAdmin'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403':
+          description: Sin rol admin, o cambio del propio rol (R14).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: Rol fuera del dominio o igual al actual (R14).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+    parameters:
+      - $ref: '#/components/parameters/UsuarioId'
+
+  /admin/usuarios/{usuarioId}/habilitacion:
+    patch:
+      tags: [Administracion]
+      operationId: cambiarHabilitacion
+      summary: Habilita o inhabilita una cuenta (admin)
+      description: |
+        Requiere rol `admin`. Decisión reversible (R15): `habilitado=false` impide
+        login, refresh y lecturas de perfil con `401` indistinguible de credenciales
+        inválidas; re-habilitar restaura el login. Jamás borra usuarios ni escribe
+        `fechaEliminacion` (la baja pertenece solo al propio usuario).
+      parameters:
+        - $ref: '#/components/parameters/UsuarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabilitacionRequest'
+      responses:
+        '200':
+          description: Estado de habilitación actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioAdmin'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoAdmin' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    parameters:
+      - $ref: '#/components/parameters/UsuarioId'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access JWT HS256 de 15 min (R12). La autoridad del rol se lee de la BD en cada request (D3/R3).
+
+  parameters:
+    AnuncioId:
+      name: anuncioId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    ConversacionId:
+      name: conversacionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    UsuarioId:
+      name: usuarioId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    CategoriaId:
+      name: categoriaId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/EnteroId'
+    CategoriaId:
+      name: categoriaId
+      in: query
+      schema:
+        $ref: '#/components/schemas/EnteroId'
+    Busqueda:
+      name: q
+      in: query
+      description: Búsqueda por texto en nombre y descripción con escape de comodines `%`, `_`, `\`.
+      schema:
+        type: string
+        maxLength: 200
+    Cursor:
+      name: cursor
+      in: query
+      description: Token opaco de paginación (cursor compuesto `(fechaCreacion, id)`); ausente = primera página.
+      schema:
+        type: string
+    Limite:
+      name: limite
+      in: query
+      description: Elementos por página (default 20, máximo 100).
+      schema:
+        type: integer
+        format: int32
+        default: 20
+        minimum: 1
+        maximum: 100
+    Pagina:
+      name: pagina
+      in: query
+      description: Índice de página desde 0 (paneles con conteo total).
+      schema:
+        type: integer
+        format: int32
+        default: 0
+        minimum: 0
+    EstadoRevision:
+      name: estadoRevision
+      in: query
+      schema:
+        $ref: '#/components/schemas/EstadoRevision'
+      default: pendiente
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Opcional (D6). La deduplicación real la impone a UNIQUE `(anuncio_id, comprador_id)`;
+        Envíos repetidos con el mismo par → `200` con la conversación existente.
+      schema:
+        type: string
+        maxLength: 100
+
+  responses:
+    EstructuraInvalida:
+      description: Problema estructural (JSON inválido, parámetro fuera de dominio/rango).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoAutorizado:
+      description: |
+        `401` genérico indistinguible: sin sesión, credenciales inválidas, cuenta sin
+        confirmar, inhabilitada o dada de baja (R13/R15).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoModerador:
+      description: Autenticado sin rol mínimo `moderador`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoAdmin:
+      description: Autenticado sin rol `admin`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoParticipante:
+      description: No es comprador ni vendedor de la conversación (R10).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoPropietario:
+      description: El anuncio no pertenece al vendedor autenticado (R7).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoEncontrado:
+      description: Recurso inexistente para el actor.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoEncontradoPropio:
+      description: Anuncio inexistente o no perteneciente al vendedor autenticado (404/403 según se resuelva el ownership).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    NoProcesable:
+      description: Valor que viola una regla de negocio (422).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    DemasiadasPeticiones:
+      description: Rate limit activo (login, registro, restablecimiento — Q1/R13).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+    EnteroId:
+      type: integer
+      format: int32
+      minimum: 1
+    FechaHora:
+      type: string
+      format: date-time
+
+    Problema:
+      type: object
+      description: |
+        RFC 9457 `application/problem+json`: `type`, `title`, `status`, `detail`.
+        Sin stack traces; `title`/`type` no revelan la causa en los errores
+        indistinguibles (401 genéricos, 404 del detalle público, reset no-enumerable).
+      properties:
+        type:
+          type: string
+          default: 'about:blank'
+          description: URI de la categoría del problema.
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+          nullable: true
+      required: [title, status]
+
+    Rol:
+      type: string
+      enum: [miembro, moderador, admin]
+      description: Dominio cerrado con jerarquía y herencia (R3). Cualquier otro valor viola el CHECK de la BD.
+    Estado:
+      type: string
+      enum: [disponible, inactivo, vendido, eliminado]
+    EstadoRevision:
+      type: string
+      enum: [pendiente, aprobado, rechazado]
+    Email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Normalizado a minúsculas en registro y login (R2). Cualquier email sintáctico válido; sin allow-list de dominio.
+
+    # ---- Auth ----
+    LoginRequest:
+      type: object
+      required: [email, contrasena]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        contrasena:
+          type: string
+          minLength: 1
+    RegistroRequest:
+      type: object
+      required: [email, nombre, contrasena]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Nombre visible; no vacío ni solo espacios (CHECK chk_nombre_no_vacio).
+        contrasena:
+          type: string
+          minLength: 8
+          description: Mínimo 8 caracteres, sin reglas de composición (NIST 800-63B, R11).
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+    LogoutRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    RestablecerSolicitudRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+    RestablecerConfirmacionRequest:
+      type: object
+      required: [token, nuevaContrasena]
+      properties:
+        token:
+          type: string
+          minLength: 1
+        nuevaContrasena:
+          type: string
+          minLength: 8
+    CambiarContrasenaRequest:
+      type: object
+      required: [contrasenaActual, nuevaContrasena]
+      properties:
+        contrasenaActual:
+          type: string
+          minLength: 1
+        nuevaContrasena:
+          type: string
+          minLength: 8
+    SesionResponse:
+      type: object
+      required: [accessToken, refreshToken, expiraEnSegundos, usuario]
+      properties:
+        accessToken:
+          type: string
+          description: JWT HS256 (sub = id del usuario, claim roles). Vive solo en memoria del cliente.
+        refreshToken:
+          type: string
+          description: Opaco; el cliente lo persiste (localStorage / secure store).
+        expiraEnSegundos:
+          type: integer
+          example: 900
+        usuario:
+          $ref: '#/components/schemas/UsuarioResumen'
+    MensajeConfirmacion:
+      type: object
+      required: [mensaje]
+      properties:
+        mensaje:
+          type: string
+
+    # ---- Usuarios ----
+    UsuarioResumen:
+      type: object
+      required: [id, email, nombre, rol, fechaCreacion]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+          description: Coincide con el `sub` del JWT (R1).
+        email:
+          $ref: '#/components/schemas/Email'
+        nombre:
+          type: string
+        urlAvatar:
+          type: string
+          nullable: true
+          description: URL pública; las claves de objeto jamás viajan (R8).
+        rol:
+          $ref: '#/components/schemas/Rol'
+        fechaVerificacionEmail:
+          $ref: '#/components/schemas/FechaHora'
+          nullable: true
+        fechaCreacion:
+          $ref: '#/components/schemas/FechaHora'
+    UsuarioAdmin:
+      allOf:
+        - $ref: '#/components/schemas/UsuarioResumen'
+        - type: object
+          required: [habilitado]
+          properties:
+            habilitado:
+              type: boolean
+    ActualizarPerfilRequest:
+      type: object
+      required: [nombre]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    # ---- Anuncios ----
+    Dinero:
+      type: number
+      format: double
+      minimum: 0
+      maximum: 99999999.99
+      description: "Rango `0 ≤ precio ≤ 99999999.99` (R8); fuera de rango → 422."
+    AnuncioResumen:
+      type: object
+      required: [id, nombre, precio, vendedorId, fechaCreacion]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        nombre:
+          type: string
+          maxLength: 255
+        precio:
+          $ref: '#/components/schemas/Dinero'
+        descripcion:
+          type: string
+          nullable: true
+        categoriaId:
+          $ref: '#/components/schemas/EnteroId'
+          nullable: true
+        imagenUrls:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+          description: Solo URLs públicas, pareadas por posición con las claves internas (que jamás viajan, R8).
+        vendedorId:
+          $ref: '#/components/schemas/UUID'
+        fechaCreacion:
+          $ref: '#/components/schemas/FechaHora'
+    AnuncioDetalle:
+      allOf:
+        - $ref: '#/components/schemas/AnuncioResumen'
+        - type: object
+          required: [estado, fechaActualizacion]
+          properties:
+            estado:
+              $ref: '#/components/schemas/Estado'
+            fechaActualizacion:
+              $ref: '#/components/schemas/FechaHora'
+    AnuncioPanel:
+      allOf:
+        - $ref: '#/components/schemas/AnuncioDetalle'
+        - type: object
+          required: [estadoRevision]
+          properties:
+            estadoRevision:
+              $ref: '#/components/schemas/EstadoRevision'
+            motivoRechazo:
+              type: string
+              nullable: true
+              description: Visible para el vendedor; poblado en rechazo/retracción (R5).
+            fechaRevision:
+              $ref: '#/components/schemas/FechaHora'
+              nullable: true
+    AnuncioMultipart:
+      type: object
+      required: [nombre, precio, imagenes]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 255
+        precio:
+          $ref: '#/components/schemas/Dinero'
+        descripcion:
+          type: string
+        categoriaId:
+          $ref: '#/components/schemas/EnteroId'
+        imagenes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: string
+            format: binary
+          description: Hasta 5, jpeg/png/gif/webp, 5 MB c/u (R8).
+    ActualizarAnuncioRequest:
+      type: object
+      description: Campos opcionales; solo se actualizan los presentes. Cualquier edición de contenido resetea la revisión (R6).
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 255
+        precio:
+          $ref: '#/components/schemas/Dinero'
+        descripcion:
+          type: string
+          nullable: true
+        categoriaId:
+          $ref: '#/components/schemas/EnteroId'
+          nullable: true
+    VisibilidadRequest:
+      type: object
+      required: [visible]
+      properties:
+        visible:
+          type: boolean
+          description: "true → disponible; false → inactivo."
+    PaginacionCursor:
+      type: object
+      required: [cursorSiguiente]
+      properties:
+        cursorSiguiente:
+          type: string
+          nullable: true
+          description: Estado compuesto `(fechaCreacion, id)`; `null` = última página. Opaco para el cliente (D4).
+    PaginacionOffset:
+      type: object
+      required: [pagina, limite, total, totalPaginas]
+      properties:
+        pagina:
+          type: integer
+        limite:
+          type: integer
+        total:
+          type: integer
+        totalPaginas:
+          type: integer
+    ColeccionAnuncios:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnuncioResumen'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionCursor'
+    ColeccionAnunciosPanel:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnuncioPanel'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionOffset'
+
+    # ---- Categorías ----
+    Categoria:
+      type: object
+      required: [id, nombre, orden]
+      properties:
+        id:
+          $ref: '#/components/schemas/EnteroId'
+        nombre:
+          type: string
+          maxLength: 100
+        descripcion:
+          type: string
+          nullable: true
+        icono:
+          type: string
+          nullable: true
+          maxLength: 10
+        orden:
+          type: integer
+    CategoriaRequest:
+      type: object
+      required: [nombre]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          maxLength: 100
+        descripcion:
+          type: string
+          nullable: true
+        icono:
+          type: string
+          nullable: true
+          maxLength: 10
+    ColeccionCategorias:
+      type: object
+      required: [datos]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Categoria'
+
+    # ---- Conversaciones y mensajes ----
+    CrearConversacionRequest:
+      type: object
+      required: [anuncioId]
+      properties:
+        anuncioId:
+          $ref: '#/components/schemas/UUID'
+          description: Único campo aceptado; el vendedorId del cliente se ignora (R9).
+    ConversacionResumen:
+      type: object
+      required: [id, anuncioId, compradorId, vendedorId, fechaCreacion, fechaActualizacion]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        anuncioId:
+          $ref: '#/components/schemas/UUID'
+        compradorId:
+          $ref: '#/components/schemas/UUID'
+        vendedorId:
+          $ref: '#/components/schemas/UUID'
+        fechaCreacion:
+          $ref: '#/components/schemas/FechaHora'
+        fechaActualizacion:
+          $ref: '#/components/schemas/FechaHora'
+          description: Se actualiza en cada envío; ordena "mis conversaciones".
+    ConversacionDetalle:
+      allOf:
+        - $ref: '#/components/schemas/ConversacionResumen'
+        - type: object
+          required: [anuncio, noLeidos]
+          properties:
+            anuncio:
+              $ref: '#/components/schemas/AnuncioResumen'
+            noLeidos:
+              type: integer
+              description: Conteo explícito; ningún GET muta leido (PRD §5).
+    ConversacionListItem:
+      allOf:
+        - $ref: '#/components/schemas/ConversacionResumen'
+        - type: object
+          properties:
+            anuncio:
+              $ref: '#/components/schemas/AnuncioResumen'
+            ultimoMensaje:
+              type: object
+              nullable: true
+              required: [id, texto, remitenteId, fechaCreacion]
+              properties:
+                id:
+                  $ref: '#/components/schemas/UUID'
+                texto:
+                  type: string
+                remitenteId:
+                  $ref: '#/components/schemas/UUID'
+                fechaCreacion:
+                  $ref: '#/components/schemas/FechaHora'
+            noLeidos:
+              type: integer
+    ColeccionMisConversaciones:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversacionListItem'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionOffset'
+    EnviarMensajeRequest:
+      type: object
+      required: [texto]
+      properties:
+        texto:
+          type: string
+          minLength: 1
+          description: Se recorta en el servidor; vacío o solo espacios → `422` (R10).
+    MensajeResponse:
+      type: object
+      required: [id, conversacionId, remitenteId, texto, leido, fechaCreacion]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        conversacionId:
+          $ref: '#/components/schemas/UUID'
+        remitenteId:
+          $ref: '#/components/schemas/UUID'
+        texto:
+          type: string
+        leido:
+          type: boolean
+        fechaCreacion:
+          $ref: '#/components/schemas/FechaHora'
+    ColeccionMensajes:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/MensajeResponse'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionCursor'
+
+    # ---- Moderación y admin ----
+    DecisionModeracionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [aprobar, rechazar, retraer]
+          description: Valor fuera del enum → `400` (estructural, PRD §6).
+        motivoRechazo:
+          type: string
+          description: Obligatorio no vacío en rechazar y retraer; ausente o vacío → `422` (R5).
+    CambioRolRequest:
+      type: object
+      required: [rol]
+      properties:
+        rol:
+          $ref: '#/components/schemas/Rol'
+          description: Fuera del dominio o igual al actual → `422` (R14, excepción declarada).
+    HabilitacionRequest:
+      type: object
+      required: [habilitado]
+      properties:
+        habilitado:
+          type: boolean
+    ColeccionUsuarios:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsuarioAdmin'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionOffset'
