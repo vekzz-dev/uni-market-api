@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En progreso |
+| Estado | Completada (2026-10-10) |
 | Creado | 2026-10-10 |
 | Alcance | Migraciones Flyway V1–V3 del DBDD contra PostgreSQL 18 real (Testcontainers) — sin repositorios ni entidades JPA |
 | Presupuesto (heurística ~400 líneas) | ~300 líneas (SQL + test); cabe en single-pr |
@@ -32,7 +32,7 @@ Materializar el esquema del DBDD como migraciones versionadas forward-only, apli
   - Seed: 6 categorías, `orden` 1–6, y re-ejecución del INSERT → sigue en 6.
   - Comportamientos FK: `confdeltype` de `anuncios_vendedor_id_fkey`='c' (CASCADE), `anuncios_categoria_id_fkey`='n' (SET NULL), `anuncios_revisado_por_fkey`='a' (NO ACTION), FK de tokens='a'.
   **Evidencia (2026-10-10)**: `mvn -q -B verify` EXIT=0; `DbSchemaVerificationTest` 20 tests / 0 failures / 0 errors (3 de migraciones y motor, 1 de índices, 2 de CHECKs, 11 parametrizados de FKs, 1 de RLS, 2 de semilla). Extras sobre el checklist mínimo: se verifican las 5 FKs de negocio restantes y las 3 FKs de tokens con su `confdeltype`, y `chk_nombre_no_vacio` se comprueba explícitamente en `usuarios` **y** en `anuncios`.
-- [ ] **T5 — Verificación y commit**: padre `mvn verify` + commit `feat(db):`. Pendiente: el writer no ejecuta operaciones de git.
+- [x] **T5 — Verificación y commit**: padre `mvn verify` + commit `feat(db):`. **Evidencia**: spot check padre `mvn -q -B verify` EXIT=0 (49 tests); commits `fbd683a` y `10d911d`.
 
 ## Entorno (verificado)
 
