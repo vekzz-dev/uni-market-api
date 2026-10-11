@@ -221,7 +221,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Slice cliente HTTP | Adaptador de **Resend**: petición HTTP formada y manejo de fallo del proveedor sin tocar Resend (D12) | `@RestClientTest` |
 | Slice serialización | Espejo wire `camelCase` ↔ columnas `snake_case`; payloads de errores `application/problem+json` | `@JsonTest` |
 | Integración | Flujos completos contra **PostgreSQL real** (nada en memoria — PRD §6): auth con rotación y reuso, moderación end-to-end, catálogo, chat, guards permitido/denegado | `@SpringBootTest` con contexto mínimo + Testcontainers; una instancia de PostgreSQL compartida entre clases (context caching) para no pagar arranque por suite |
-| Contrato | Lint del OpenAPI en CI y detección de cambios incompatibles en revisión (PRD O6); el cliente se genera en los repos de web y móvil, no aquí | spectral + oasdiff en CI |
+| Contrato | Guardas del contrato dentro de `mvn verify` (validez estructural + `$ref`s con swagger-parser; claves YAML duplicadas prohibidas con SnakeYAML estricto). La detección de cambios incompatibles se añadirá como guarda Java (p. ej. `openapi-diff`) cuando exista primera release del contrato | swagger-parser + SnakeYAML estricto (deps de test, sin Node) |
 | Cobertura | Gate CI: núcleo/dominio ≥ 80 % (los gates de UI viven en los repos de clientes) | JaCoCo |
 
 **Organización de la suite** (convención de los skills `java-junit` / `java-springboot-testing`): clases con sufijo `Test` y patrón AAA; `@Nested` agrupando por caso de uso; `@DisplayName` descriptivo en español; `@Tag("fast")` para la suite sin Testcontainers en el ciclo rápido de CI; datos de prueba complejos (anuncios con imágenes pareadas, usuarios por rol) generados con **Instancio**; un solo caso de comportamiento por test, independiente y en cualquier orden.
@@ -237,7 +237,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
 | Observabilidad | Logs estructurados con `traceId`; métricas básicas de arranque de Spring. SLO diferidos a pre-producción con latencias medidas (Q2 resuelta, 2026-10-10) |
-| CI | Maven: build + tests + lint del OpenAPI; gate de cobertura de dominio (sin path filters, un solo repositorio) |
+| CI | Maven: build + tests + validación del contrato (guardas Java en tests); gate de cobertura de dominio (sin path filters, un solo repositorio) |
 
 ## 11. Decisiones técnicas y trade-offs (resumen ADR)
 
@@ -255,6 +255,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | D10 | MapStruct para DTO ↔ contrato | Mapeo manual | Volumen de DTOs alto y contract-first; reduce errores de espejo wire/columna |
 | D11 | Stack fijo: Java 21 (LTS), Spring Boot 4.1 (línea 4.x vigente, sobre Spring Framework 7 / Security 7), Spring MVC, Maven, PostgreSQL 18, OpenAPI 3.1; repositorio backend exclusivo | Java 17/25, Boot 3.5, Gradle, monorepo | Generación estable vigente al iniciar (2026-10). Nota: ni PostgreSQL ni OpenAPI publican ediciones "LTS": son sus versiones mayores actuales (PG 18 con 5 años de soporte) |
 | D12 | Email vía Resend (API HTTP) en prod; adaptador de log a consola en dev que imprime el token crudo | SDK/SMTP de Resend; Mailpit | Resend no ofrece sandbox real ni SDK oficial Java; el adaptador de log permite completar confirmación/reset en dev y mockear el puerto en tests sin dependencias externas |
+| D13 | Validación del contrato OpenAPI 100 % Java dentro de `mvn verify` (swagger-parser + guard SnakeYAML estricto); cero tooling Node/JS en repo y CI | Spectral/oasdiff en CI; `openapi-generator-maven-plugin` | Decisión del propietario: nada de npm/JS. El plugin de openapi-generator NO expone goal `validate` (solo `generate`/`help`); swagger-parser valida de verdad y el guard estricto tapa el agujero de claves duplicadas que los parsers Java ignoran. Un comando local reproduce el CI |
 
 ## 12. Riesgos y preguntas abiertas
 
