@@ -1,19 +1,75 @@
-# Build
-target/
+# ==============================================================================
+# .gitignore — Uni Market API (backend Java/Maven)
+# Regla: artefactos generados, configs locales y secretos NUNCA se versionan.
+# ==============================================================================
 
-# IDEs
+# ---- Build (Maven) -----------------------------------------------------------
+target/
+build/
+out/
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---- Java --------------------------------------------------------------------
+*.class
+*.jar
+*.war
+!lib/*.jar
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# ---- IDEs y editores ---------------------------------------------------------
+# IntelliJ IDEA / Android Studio
 .idea/
 *.iml
+*.ipr
+*.iws
+# Eclipse
+.settings/
+.project
+.classpath
+.factorypath
+# VS Code
 .vscode/
+# NetBeans
+nbproject/
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
 
-# Sistema operativo
+# ---- Sistema operativo -------------------------------------------------------
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
 
-# Logs
+# ---- Logs y temporales -------------------------------------------------------
 *.log
+logs/
+*.tmp
+*.temp
+*.pid
+*.seed
+*.bak
 
-# Entorno local
+# ---- Entorno local y secretos ------------------------------------------------
 .env
+.env.*
+!.env.example
+application-local.yml
+application-local*.properties
+*.pem
+*.key
+*.p12
+*.jks
+keystore*
 
-# Herramientas locales de agentes (registro de skills, índices locales)
+# ---- Herramientas locales de agentes ----------------------------------------
 .atl/
