@@ -300,6 +300,58 @@ class CatalogoFlujoIntegrationTest extends SoportePostgresIT {
     }
 
     @Nested
+    @DisplayName("Reemplazo de imágenes (N6) y límites de búsqueda")
+    class ImagenesYBuscador {
+
+        @Test
+        @DisplayName("PUT /imagenes: sustituye archivos (los viejos se borran) y resetea la revisión")
+        void reemplazoDeImagenes() throws IOException {
+            SesionDePrueba vendedor = usuarioConSesion("vendedor-imagenes");
+            String creado = crearAnuncio(vendedor.token(), "Camara " + UUID.randomUUID(), "95", JPEG).getBody();
+            JsonNode cuerpo = json.readTree(creado);
+            String id = cuerpo.get("id").asText();
+            String urlVieja = cuerpo.get("imagenUrls").get(0).asText();
+            aprobar(UUID.fromString(id), vendedor.id());
+            Path archivoViejo = SoportePostgresIT.MEDIA_DIR.resolve(urlVieja.replaceFirst("^/media/", ""));
+            assertThat(Files.exists(archivoViejo)).isTrue();
+
+            MultiValueMap<String, Object> partes = new LinkedMultiValueMap<>();
+            partes.add("imagenes", new ByteArrayResource(JPEG) {
+                @Override
+                public String getFilename() {
+                    return "nueva.jpg";
+                }
+            });
+            HttpHeaders cabeceras = conSesion(vendedor.token());
+            cabeceras.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            ResponseEntity<String> respuesta = rest.exchange("/v1/anuncios/" + id + "/imagenes", HttpMethod.PUT,
+                    new HttpEntity<>(partes, cabeceras), String.class);
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+            JsonNode actualizado = json.readTree(respuesta.getBody());
+            assertThat(actualizado.get("estadoRevision").asText()).isEqualTo("pendiente");
+            assertThat(actualizado.get("imagenUrls")).hasSize(1);
+            assertThat(actualizado.get("imagenUrls").get(0).asText()).isNotEqualTo(urlVieja);
+            assertThat(Files.exists(archivoViejo)).as("la vieja se borra tras el commit").isFalse();
+
+            SesionDePrueba intruso = usuarioConSesion("intruso-imagenes");
+            ResponseEntity<String> ajeno = rest.exchange("/v1/anuncios/" + id + "/imagenes", HttpMethod.PUT,
+                    new HttpEntity<>(partes, conSesion(intruso.token())), String.class);
+            assertThat(ajeno.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("q con más de 200 caracteres → 400 estructural")
+        void qDemasiadoLargo() {
+            ResponseEntity<String> respuesta = rest.getForEntity(
+                    "/v1/anuncios?q=" + "x".repeat(201), String.class);
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Nested
     @DisplayName("Lecturas del panel")
     class Panel {
 

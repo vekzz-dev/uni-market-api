@@ -55,6 +55,9 @@ public class ServicioCatalogo {
             filtro = filtro.and(EspecificacionesAnuncio.deCategoria(categoriaId));
         }
         if (q != null && !q.isBlank()) {
+            if (q.length() > 200) {
+                throw new EstructuraInvalidaException("El parámetro 'q' admite hasta 200 caracteres.");
+            }
             filtro = filtro.and(EspecificacionesAnuncio.busqueda(q.strip()));
         }
 

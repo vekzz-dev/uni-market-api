@@ -214,6 +214,73 @@ class ServicioAnunciosTest {
     }
 
     @Nested
+    @DisplayName("Reemplazo de imágenes (N6)")
+    class ReemplazoDeImagenes {
+
+        private Anuncio conImagenes(UUID vendedor, EstadoRevision revision, String... rutas) {
+            Anuncio a = new Anuncio();
+            a.setVendedorId(vendedor);
+            a.setNombre("Item");
+            a.setPrecio(new BigDecimal("10.00"));
+            a.setEstadoRevision(revision);
+            a.setImagenesUrls(java.util.Arrays.stream(rutas).map(AlmacenObjetos::urlDesdeRuta).toList());
+            a.setImagenesPaths(List.of(rutas));
+            if (revision != EstadoRevision.pendiente) {
+                a.setRevisadoPor(UUID.randomUUID());
+                a.setFechaRevision(java.time.Instant.now());
+            }
+            return a;
+        }
+
+        @Test
+        @DisplayName("Sustituye los arrays, elimina las viejas y resetea la revisión (R6/R8)")
+        void reemplazoFeliz() {
+            UUID vendedor = UUID.randomUUID();
+            Anuncio anuncio = conImagenes(vendedor, EstadoRevision.aprobado, "anuncios/" + vendedor + "/vieja.jpg");
+            when(repositorio.findById(any())).thenReturn(Optional.of(anuncio));
+            when(repositorio.saveAndFlush(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+            when(almacen.guardar(anyString(), anyString(), any()))
+                    .thenAnswer(invocacion -> AlmacenObjetos.urlDesdeRuta(invocacion.getArgument(0)));
+
+            DtosAnuncios.AnuncioPanel actualizado =
+                    servicio.reemplazarImagenes(vendedor, UUID.randomUUID(), List.of(imagenJpeg()));
+
+            assertThat(actualizado.imagenUrls()).hasSize(1);
+            assertThat(actualizado.estadoRevision()).isEqualTo(EstadoRevision.pendiente);
+            verify(almacen).eliminar("anuncios/" + vendedor + "/vieja.jpg");
+        }
+
+        @Test
+        @DisplayName("Compensación: si la tx falla, las nuevas se borran y las viejas se conservan")
+        void compensaYSinTocarViejas() {
+            UUID vendedor = UUID.randomUUID();
+            Anuncio anuncio = conImagenes(vendedor, EstadoRevision.pendiente, "anuncios/" + vendedor + "/vieja.jpg");
+            when(repositorio.findById(any())).thenReturn(Optional.of(anuncio));
+            when(almacen.guardar(anyString(), anyString(), any()))
+                    .thenAnswer(invocacion -> AlmacenObjetos.urlDesdeRuta(invocacion.getArgument(0)));
+            when(repositorio.saveAndFlush(any())).thenThrow(new IllegalStateException("fallo simulado"));
+
+            assertThatThrownBy(() -> servicio.reemplazarImagenes(vendedor, UUID.randomUUID(), List.of(imagenJpeg())))
+                    .isInstanceOf(IllegalStateException.class);
+
+            // La vieja nunca se toca; la nueva subida sí se compensa (rollback descarta el resto).
+            verify(almacen, never()).eliminar("anuncios/" + vendedor + "/vieja.jpg");
+            verify(almacen).eliminar(anyString());
+        }
+
+        @Test
+        @DisplayName("Anuncio ajeno → 403 (R7)")
+        void ajenoFuera() {
+            Anuncio anuncio = conImagenes(UUID.randomUUID(), EstadoRevision.pendiente, "anuncios/x/vieja.jpg");
+            when(repositorio.findById(any())).thenReturn(Optional.of(anuncio));
+
+            assertThatThrownBy(() -> servicio.reemplazarImagenes(UUID.randomUUID(), UUID.randomUUID(), List.of(imagenJpeg())))
+                    .isInstanceOf(ProhibidoException.class);
+            verify(almacen, never()).guardar(anyString(), anyString(), any());
+        }
+    }
+
+    @Nested
     @DisplayName("Visibilidad, vendido y baja")
     class CicloDeVida {
 

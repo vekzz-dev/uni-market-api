@@ -7,6 +7,8 @@ import com.unimarket.api.shared.error.ProhibidoException;
 import com.unimarket.api.shared.error.ReglaDeNegocioException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -136,6 +138,58 @@ public class ServicioAnuncios {
         Anuncio anuncio = cargarDelVendedor(anuncioId, actorId);
         anuncio.setEstado(EstadoAnuncio.eliminado);
         anuncios.saveAndFlush(anuncio);
+    }
+
+    /**
+     * Reemplaza TODAS las imágenes del anuncio (N6, R8): sube las nuevas antes del
+     * commit, sustituye los arrays pareados, resetea la revisión si hacía falta (R6)
+     * y elimina las reemplazadas SOLO tras el commit (nunca antes: si la tx falla,
+     * las viejas siguen siendo las válidas).
+     */
+    @Transactional
+    public DtosAnuncios.AnuncioPanel reemplazarImagenes(UUID actorId, UUID anuncioId, List<MultipartFile> imagenes) {
+        Anuncio anuncio = cargarDelVendedor(anuncioId, actorId);
+        List<String> rutasViejas = List.copyOf(anuncio.getImagenesPaths());
+        List<ImagenValidada> validas = validarImagenes(imagenes);
+
+        List<String> rutasNuevas = new ArrayList<>();
+        List<String> urlsNuevas = new ArrayList<>();
+        try {
+            for (ImagenValidada imagen : validas) {
+                String ruta = "anuncios/" + actorId + "/" + UUID.randomUUID() + "." + imagen.extension();
+                urlsNuevas.add(almacen.guardar(ruta, imagen.contentType(), imagen.bytes()));
+                rutasNuevas.add(ruta);
+            }
+            anuncio.setImagenesUrls(new ArrayList<>(urlsNuevas));
+            anuncio.setImagenesPaths(new ArrayList<>(rutasNuevas));
+            if (anuncio.getEstadoRevision() != EstadoRevision.pendiente) {
+                anuncio.setEstadoRevision(EstadoRevision.pendiente);
+                anuncio.limpiarTrailRevision();
+            }
+            Anuncio guardado = anuncios.saveAndFlush(anuncio);
+            borrarTrasCommit(rutasViejas);
+            return DtosAnuncios.AnuncioPanel.de(guardado);
+        } catch (RuntimeException fallo) {
+            rutasNuevas.forEach(almacen::eliminar);
+            throw fallo;
+        }
+    }
+
+    /** Diferido hasta el commit; sin transacción activa (tests planos) borra en el acto. */
+    private void borrarTrasCommit(List<String> rutas) {
+        if (rutas.isEmpty()) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    rutas.forEach(almacen::eliminar);
+                }
+            });
+        } else {
+            rutas.forEach(almacen::eliminar);
+        }
     }
 
     /** Carga con ownership aplicado: 404 si no existe, 403 si es de otro vendedor (R7). */

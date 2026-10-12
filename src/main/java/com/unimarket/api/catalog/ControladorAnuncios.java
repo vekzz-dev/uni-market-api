@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -81,6 +82,16 @@ public class ControladorAnuncios {
             @PathVariable UUID anuncioId,
             @Valid @RequestBody DtosAnuncios.ActualizarRequest cambios) {
         return ResponseEntity.ok(anuncios.editar(idActual(jwt), anuncioId, cambios));
+    }
+
+    /** Reemplaza TODAS las imágenes del anuncio (N6): multipart 1..5, resetea revisión (R6). */
+    @PutMapping(value = "/anuncios/{anuncioId}/imagenes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('MIEMBRO','MODERADOR','ADMIN')")
+    public ResponseEntity<DtosAnuncios.AnuncioPanel> reemplazarImagenes(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID anuncioId,
+            @RequestParam(name = "imagenes", required = false) List<MultipartFile> imagenes) {
+        return ResponseEntity.ok(anuncios.reemplazarImagenes(idActual(jwt), anuncioId, imagenes));
     }
 
     /** Alterna disponible↔inactivo: solo sobre anuncio aprobado (PRD §5). */
