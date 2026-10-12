@@ -222,7 +222,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Slice serialización | Espejo wire `camelCase` ↔ columnas `snake_case`; payloads de errores `application/problem+json` | `@JsonTest` |
 | Integración | Flujos completos contra **PostgreSQL real** (nada en memoria — PRD §6): auth con rotación y reuso, moderación end-to-end, catálogo, chat, guards permitido/denegado | `@SpringBootTest` con contexto mínimo + Testcontainers; una instancia de PostgreSQL compartida entre clases (context caching) para no pagar arranque por suite |
 | Contrato | Guardas del contrato dentro de `mvn verify` (validez estructural + `$ref`s con swagger-parser; claves YAML duplicadas prohibidas con SnakeYAML estricto). La detección de cambios incompatibles se añadirá como guarda Java (p. ej. `openapi-diff`) cuando exista primera release del contrato | swagger-parser + SnakeYAML estricto (deps de test, sin Node) |
-| Cobertura | Gate CI: núcleo/dominio ≥ 80 % (los gates de UI viven en los repos de clientes). **Hoy solo reporta**: se activa con el módulo `identity`, cuando exista código de dominio evaluable | JaCoCo |
+| Cobertura | Gate CI **activo** (verificado al activarlo: 81 % de líneas): cobertura de líneas ≥ 80 % sobre el bundle completo (`jacoco:check` en `verify`); los gates de UI viven en los repos de clientes | JaCoCo |
 
 **Organización de la suite** (convención de los skills `java-junit` / `java-springboot-testing`): clases con sufijo `Test` y patrón AAA; `@Nested` agrupando por caso de uso; `@DisplayName` descriptivo en español; `@Tag("fast")` para la suite sin Testcontainers en el ciclo rápido de CI; datos de prueba complejos (anuncios con imágenes pareadas, usuarios por rol) generados con **Instancio**; un solo caso de comportamiento por test, independiente y en cualquier orden.
 
@@ -232,7 +232,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 | Tema | Decisión |
 |---|---|
-| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, API key de Resend, storage (`MEDIA_DIR` en dev / credenciales R2 en prod, D14), TTLs de token, cooldown de reenvío, límites de imagen — una sola fuente de configuración de límites (R8) |
+| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, API key de Resend, storage (`MEDIA_DIR` en dev / credenciales R2 en prod, D14), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
 | Respaldo | Backup diario automatizado de PostgreSQL con retención de 7 días (Q4, 2026-10-10) |
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
@@ -270,6 +270,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | N2 | "Log de entrega" de emails sin definir (logs vs tabla) | Menor | **Resuelto (2026-10-10)**: logs estructurados, sin tabla de auditoría |
 | N3 | Mecanismo exacto del rate limiter (en memoria vs distribuido) | Menor | Solo si se despliegan varias instancias; en un despliegue único, en memoria basta |
 | N4 | Documentación del cursor compuesto en el PRD (dice "cursor opaco estable"; la implementación es compuesta) | Cosmético | Al redactar el OpenAPI |
+| N5 | Cooldown de reenvío de emails (PRD §5): no implementado y el contrato no expone endpoint de "reenviar confirmación". Decidir si se añade el endpoint con cooldown configurable o se retira del PRD | Menor | Al retomar `notifications` (o antes de la entrega final) |
 
 ## 13. Documentos relacionados
 

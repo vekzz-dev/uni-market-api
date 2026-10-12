@@ -63,5 +63,4 @@ app:
       - image/webp
 
 # Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
-# - identity: rotación del refresh (30 días, constante R12) y cooldown de reenvío.
 # - catalog: límites de subida de imágenes (tamaño máximo y cantidad por anuncio).
