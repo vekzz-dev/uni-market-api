@@ -41,6 +41,8 @@
 6. **Convención de slices**: `StubsParaSlicesContextCustomizerFactory` (solo test) extendida con `ServicioAnuncios`/`ServicioCatalogo` — los `@WebMvcTest` genéricos escanean TODOS los controladores.
 7. **Spring 7**: `HttpStatus.UNPROCESSABLE_CONTENT` reemplaza a `UNPROCESSABLE_ENTITY` (mismo 422).
 8. **Nota de seguridad**: la URL pública `/media/anuncios/{vendedorId}/{uuid}.ext` contiene el path del objeto por diseño (la clave interna viaja solo como campo `imagenesPaths`, nunca expuesto — test explícito).
+9. **Divergencia aditiva del wire (menor)**: el listado público incluye `estado` y `fechaActualizacion` (el schema `AnuncioResumen` del contrato no los lista; son campos extra compatibles). Si se exige espejo estricto, se alinea en la próxima pasada del contrato; ningún cliente se rompe hoy.
+10. **Fix post-auditoría (2026-10-12)**: `max-request-size` del contenedor era 10 MB mientras R8 permite 5×5 MB por anuncio — subir 3+ imágenes válidas daba 400 del contenedor. Corregido a 26 MB (5×5 + margen) en `application.yml` y el yml de test.
 
 ## Criterios de aceptación
 

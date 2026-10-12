@@ -27,11 +27,12 @@ spring:
 
   servlet:
     multipart:
-      # El contenedor acepta hasta 10 MB para que la decisión de negocio (avatar 2 MB,
-      # imágenes de anuncio 5 MB) la tome la aplicación con su 422 (R8); el default de
-      # Boot (1 MB por archivo) rechazaría antes al contenedor.
+      # El contenedor acepta hasta 10 MB POR ARCHIVO para que la decisión de negocio (avatar 2 MB,
+      # imágenes de anuncio 5 MB, R8) la tome la aplicación con su 422. El total de la petición
+      # cubre 5 imágenes × 5 MB + campos (R8): sin este margen, subir 3+ imágenes válidas caería
+      # en un 400 del contenedor antes de validar.
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 26MB
 
 server:
   port: 8080
