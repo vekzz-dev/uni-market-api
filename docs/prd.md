@@ -88,7 +88,7 @@ Reglas transversales:
 | Capacidad | Qué incluye |
 |---|---|
 | **Datos** | 5 tablas de negocio (`usuarios`, `categorias`, `anuncios`, `conversaciones`, `mensajes`) + 3 tablas de tokens (`tokens_verificacion_email`, `tokens_restablecimiento_contrasena`, `tokens_refresh`); CHECKs, UNIQUEs, FKs con comportamiento `ON DELETE` y 16 índices por patrón de query (13 de negocio + 3 de tokens activos); migraciones versionadas forward-only e inmutables; seed idempotente de 6 categorías base. |
-| **Identidad** | Registro con confirmación de email obligatoria (bloquea el login hasta confirmar), login con emisión de JWT, refresh con rotación, logout, restablecimiento y cambio de contraseña, lectura/actualización de perfil, subida/eliminación de avatar y baja de cuenta soft-delete. |
+| **Identidad** | Registro con confirmación de email obligatoria (bloquea el login hasta confirmar), reenvío de confirmación con cooldown (N5), login con emisión de JWT, refresh con rotación, logout, restablecimiento y cambio de contraseña, lectura/actualización de perfil, subida/eliminación de avatar y baja de cuenta soft-delete. |
 | **Autorización** | Jerarquía de roles, matriz de permisos por operación con caso permitido y denegado por regla, ownership de anuncios, protección de columnas de moderación, prohibiciones de auto-aprobación y auto-promoción. |
 | **Catálogo público** | `GET /v1/anuncios` y detalle: solo anuncios visibles, paginación por cursor opaco estable (default 20, máximo 100), orden por defecto `fechaCreacion DESC` (también `precio`), filtro `categoriaId`, búsqueda `q` en nombre y descripción con escape de comodines `%`, `_` y `\`. |
 | **Anuncios (vendedor)** | Crear siempre `pendiente` (201 + `Location`), editar con reset a `pendiente`, toggle de visibilidad solo sobre `aprobado` (`disponible ↔ inactivo`), marcar vendido, baja por estado `eliminado` sin destruir conversaciones ni objetos, panel "mis anuncios" en offset con badge de revisión y `motivoRechazo`. |
@@ -124,6 +124,7 @@ Reglas transversales:
 - Borrado de objetos de imagen al dar de baja un anuncio: la baja conserva los objetos; el borrado ocurre solo al reemplazar/eliminar imágenes en edición.
 - Historial de decisiones de moderación: solo se conserva la última revisión, sin tabla de historial ni métricas por moderador (tradeoff aceptado).
 - Gestión institucional (aulas, cursos, acreditación): fuera del dominio comercial.
+- Búsqueda insensible a acentos: `electronica` no encuentra `Electrónica` (decisión 2026-10-12; el índice trigram se mantiene efectivo sin normalización).
 - Repositorios de los clientes web y móvil (implementación, frameworks, generación de su cliente): cada app en su repositorio propio; este repositorio es exclusivamente backend.- SLA o garantía de tiempo de moderación: la cola FIFO se procesa según disponibilidad del equipo de moderación; el resultado es visible para el vendedor en "mis anuncios" (badge + motivoRechazo).
 
 ## 8. Criterios de éxito / aceptación

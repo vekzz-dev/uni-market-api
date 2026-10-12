@@ -190,6 +190,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problema'
 
+  /auth/reenviar-confirmacion:
+    post:
+      tags: [Auth]
+      operationId: reenviarConfirmacion
+      summary: Reenvía el email de confirmación (N5)
+      security: []
+      description: |
+        Respuesta `202` idéntica exista o no la cuenta o esté ya confirmada (R13).
+        Cooldown configurable (`app.notificaciones.cooldown-reenvio`, default 2 minutos):
+        dentro de la ventana no se reemite; fuera de ella el token previo se invalida y
+        se emite uno nuevo (R11). Rate limiting → `429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestablecerSolicitudRequest'
+      responses:
+        '202':
+          description: Respuesta genérica idéntica en todos los casos (R13).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeConfirmacion'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
   # ------------------------------------------------------------ Usuarios ---
   /usuarios:
     post:
@@ -355,6 +382,7 @@ paths:
         - $ref: '#/components/parameters/Limite'
         - name: orden
           in: query
+          description: "fechaCreacion ordena descendente; precio ordena ascendente."
           schema:
             type: string
             enum: [fechaCreacion, precio]
@@ -474,6 +502,42 @@ paths:
         '403': { $ref: '#/components/responses/NoPropietario' }
         '404': { $ref: '#/components/responses/NoEncontradoPropio' }
         '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /anuncios/{anuncioId}/imagenes:
+    put:
+      tags: [Anuncios]
+      operationId: reemplazarImagenes
+      summary: Reemplaza todas las imágenes del anuncio (N6)
+      description: |
+        Ownership (R7). Multipart `imagenes` 1..5 (jpeg/png/gif/webp, 5 MB c/u): sustituye
+        el set completo; las reemplazadas se borran del storage SOLO tras el commit (R8).
+        Si el anuncio estaba `aprobado` o `rechazado`, vuelve a `pendiente` y limpia el
+        trail de revisión (R6).
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImagenesMultipart'
+      responses:
+        '200':
+          description: Imágenes reemplazadas; devuelve el anuncio actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoPropietario' }
+        '404': { $ref: '#/components/responses/NoEncontradoPropio' }
+        '422':
+          description: Más de 5 imágenes, tipo/tamaño inválido o set vacío (R8).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
 
   /anuncios/{anuncioId}/visibilidad:
     post:
@@ -1399,6 +1463,18 @@ components:
             type: string
             format: binary
           description: Hasta 5, jpeg/png/gif/webp, 5 MB c/u (R8).
+    ImagenesMultipart:
+      type: object
+      required: [imagenes]
+      properties:
+        imagenes:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: string
+            format: binary
+          description: Hasta 5, jpeg/png/gif/webp, 5 MB c/u (R8); reemplaza el set completo.
     ActualizarAnuncioRequest:
       type: object
       description: Campos opcionales; solo se actualizan los presentes. Cualquier edición de contenido resetea la revisión (R6).
