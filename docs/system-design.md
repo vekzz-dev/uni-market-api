@@ -269,7 +269,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | N1 | Correcciones del DBDD (índices de tokens, `NO ACTION` explícito, CHECKs de trail e `icono`) | — | **Resuelto (2026-10-10)**: aplicadas al DBDD |
 | N2 | "Log de entrega" de emails sin definir (logs vs tabla) | Menor | **Resuelto (2026-10-10)**: logs estructurados, sin tabla de auditoría |
 | N3 | Mecanismo exacto del rate limiter (en memoria vs distribuido) | Menor | Solo si se despliegan varias instancias; en un despliegue único, en memoria basta |
-| N4 | Documentación del cursor compuesto en el PRD (dice "cursor opaco estable"; la implementación es compuesta) | Cosmético | Al redactar el OpenAPI |
+| N4 | **Resuelto (2026-10-12)**: el OpenAPI redactado documenta el cursor compuesto (`(fechaCreacion, id)` / `(precio, id)` según orden); el texto del PRD ("cursor opaco estable") queda a nivel de producto y es compatible | — | — |
 | N5 | **Resuelto (2026-10-12)**: `POST /auth/reenviar-confirmacion` con `202` genérico (R13), cooldown configurable (`app.notificaciones.cooldown-reenvio`, default 2 min), invalidación del token previo (R11) y rate limit — implementado con tests de integración | — | — |
 | N6 | **Resuelto (2026-10-12)**: `PUT /anuncios/{id}/imagenes` (multipart 1..5) reemplaza el set completo, borra las viejas solo post-commit (R8) y resetea la revisión (R6) — implementado con tests de integración y de compensación | — | — |
 | N7 | Búsqueda con acentos: no-objetivo explícito registrado en el PRD §7 (decisión 2026-10-12) | — | — |

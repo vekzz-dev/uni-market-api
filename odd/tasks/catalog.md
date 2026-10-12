@@ -35,7 +35,7 @@
 
 1. **Delegación denegada**: dos intentos de writer fueron rechazados por permisos del runtime (`subagent`); el propietario eligió implementación inline. (El módulo se guardó como work-unit commits normales.)
 2. **Mapeo manual** (fábricas estáticas `de(...)`) en vez de MapStruct (D10), consistente con `identity`; D10 actualizada en el SDD para reflejar la práctica real.
-3. **Imágenes en edición no implementadas**: el contrato (`PATCH /contenido`) es JSON sin multipart, así que el reemplazo de imágenes que asume el PRD §7 queda como **N6** en el SDD (decidir extender contrato o retirar del PRD). La compensación del alta SÍ está implementada y testeada.
+3. **Imágenes en edición no implementadas**: el contrato (`PATCH /contenido`) es JSON sin multipart, así que el reemplazo de imágenes que asume el PRD §7 quedó como **N6** en el SDD — **resuelto el 2026-10-12** con `PUT /anuncios/{id}/imagenes` (feature `hardening-post-catalog`). La compensación del alta SÍ está implementada y testeada.
 4. **Orden por precio ascendente** (contrato ambiguo en dirección) con cursor `(precio, id)` mayor.
 5. **`ApiExceptionHandler` +2 handlers** (`ServletRequestBindingException`, `MultipartException` → 400): sin ellos, una parte multipart faltante caía al fallback 500 (defecto real detectado por el slice test).
 6. **Convención de slices**: `StubsParaSlicesContextCustomizerFactory` (solo test) extendida con `ServicioAnuncios`/`ServicioCatalogo` — los `@WebMvcTest` genéricos escanean TODOS los controladores.
