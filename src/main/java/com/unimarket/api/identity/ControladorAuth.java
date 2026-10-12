@@ -76,6 +76,20 @@ public class ControladorAuth {
                         "Si la cuenta existe, recibirás un correo para restablecer tu contraseña."));
     }
 
+    /**
+     * Reenvía la confirmación de email (PRD §5, N5): {@code 202} idéntico exista o no la
+     * cuenta o esté ya confirmada (R13), con cooldown configurable y rate limit.
+     */
+    @PostMapping("/reenviar-confirmacion")
+    public ResponseEntity<Dtos.MensajeRespuesta> reenviarConfirmacion(
+            @Valid @RequestBody Dtos.SolicitudResetRequest cuerpo, HttpServletRequest solicitud) {
+        tasa.exigir("reenvio", solicitud.getRemoteAddr(), cuerpo.email());
+        registro.reenviarConfirmacion(cuerpo.email());
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(new Dtos.MensajeRespuesta(
+                        "Si la cuenta existe y no está confirmada, recibirás un correo de confirmación."));
+    }
+
     /** Consume el reset de un solo uso (R11). */
     @PostMapping("/restablecer-contrasena/confirmar")
     public ResponseEntity<Void> confirmarReset(@Valid @RequestBody Dtos.ConfirmarResetRequest cuerpo) {

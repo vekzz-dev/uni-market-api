@@ -17,11 +17,12 @@ import java.net.http.HttpResponse;
 @ConditionalOnProperty(name = "app.notificaciones.proveedor", havingValue = "resend")
 public class CorreoTransaccionalResend implements CorreoTransaccional {
 
-    private static final URI API = URI.create("https://api.resend.com/emails");
+    private static final String API_POR_DEFECTO = "https://api.resend.com/emails";
 
     private final HttpClient http;
     private final String apiKey;
     private final String remitente;
+    private final URI api;
 
     public CorreoTransaccionalResend(PropiedadesNotificaciones propiedades) {
         this(HttpClient.newHttpClient(), propiedades);
@@ -37,6 +38,10 @@ public class CorreoTransaccionalResend implements CorreoTransaccional {
         this.http = http;
         this.apiKey = propiedades.resend().apiKey();
         this.remitente = propiedades.resend().remitente();
+        // Base URL configurable: prod usa la API real; los tests apuntan a un stub local.
+        this.api = URI.create(propiedades.resend().baseUrl() == null || propiedades.resend().baseUrl().isBlank()
+                ? API_POR_DEFECTO
+                : propiedades.resend().baseUrl());
     }
 
     @Override
@@ -46,7 +51,7 @@ public class CorreoTransaccionalResend implements CorreoTransaccional {
                 json(remitente), json(mensaje.destino()), json(mensaje.asunto()), json(mensaje.texto()));
         HttpRequest peticion;
         try {
-            peticion = HttpRequest.newBuilder(API)
+            peticion = HttpRequest.newBuilder(api)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(cuerpo))

@@ -49,6 +49,8 @@ app:
   # `resend` envía vía API HTTP con RESEND_API_KEY y RESEND_REMITENTE (prod).
   notificaciones:
     proveedor: ${NOTIFICACIONES_PROVEEDOR:log}
+    # Cooldown de reenvío de confirmación (PRD §5, N5).
+    cooldown-reenvio: ${NOTIFICACIONES_COOLDOWN_REENVIO:2m}
     resend:
       api-key: ${RESEND_API_KEY:}
       remitente: ${RESEND_REMITENTE:no-reply@example.com}
