@@ -18,6 +18,13 @@ app:
       - image/png
       - image/gif
       - image/webp
+    anuncio-max-imagenes: 5
+    imagen-max-bytes: 5242880
+    tipos-imagen:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
 
 spring:
   servlet:

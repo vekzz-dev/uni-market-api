@@ -61,6 +61,14 @@ app:
       - image/png
       - image/gif
       - image/webp
+    # Límites de anuncios (R8): los aplica la aplicación con 422; el contenedor admite 10 MB.
+    anuncio-max-imagenes: 5
+    imagen-max-bytes: 5242880
+    tipos-imagen:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
 
 # Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
-# - catalog: límites de subida de imágenes (tamaño máximo y cantidad por anuncio).
+# - moderation: decisión de revisión vive en catalog; sin config propia aún.

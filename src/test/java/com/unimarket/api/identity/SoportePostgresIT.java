@@ -24,7 +24,7 @@ public abstract class SoportePostgresIT {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18");
 
-    static final Path MEDIA_DIR;
+    public static final Path MEDIA_DIR;
 
     static {
         try {

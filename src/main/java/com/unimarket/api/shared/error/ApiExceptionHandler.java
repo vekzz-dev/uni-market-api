@@ -11,9 +11,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
@@ -96,6 +98,22 @@ public class ApiExceptionHandler {
                                                                   HttpServletRequest solicitud) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 problema(HttpStatus.NOT_FOUND, "Recurso no encontrado", "El recurso solicitado no existe.", solicitud));
+    }
+
+    /** Parámetro o parte de multipart obligatoria ausente → 400 estructural (openapi). */
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public ResponseEntity<ProblemDetail> manejarEnlaceInvalido(ServletRequestBindingException excepcion,
+                                                               HttpServletRequest solicitud) {
+        return ResponseEntity.badRequest().body(
+                problema(HttpStatus.BAD_REQUEST, TITULO_400, "Falta un dato obligatorio de la solicitud.", solicitud));
+    }
+
+    /** Solicitud multipart ilegible (p. ej. el contenedor rechaza el tamaño) → 400 estructural. */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ProblemDetail> manejarMultipartInvalido(MultipartException excepcion,
+                                                                  HttpServletRequest solicitud) {
+        return ResponseEntity.badRequest().body(
+                problema(HttpStatus.BAD_REQUEST, TITULO_400, "La solicitud multipart no es válida.", solicitud));
     }
 
     /**
