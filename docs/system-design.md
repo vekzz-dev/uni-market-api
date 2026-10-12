@@ -170,7 +170,7 @@ El detalle completo de rutas, cuerpos y códigos vive en el OpenAPI (siguiente e
 
 | Modo | Dónde | Mecanismo |
 |---|---|---|
-| Cursor opaco | Catálogo e historial de chat | **Cursor compuesto `(fecha_creacion, id)`** codificado en base64; predicado `WHERE (fecha_creacion, id) < (:fc, :id)` (o `>` según dirección). El `id` desempata timestamps iguales y garantiza orden total sin filas saltadas ni duplicadas. |
+| Cursor opaco | Catálogo e historial de chat | **Cursor compuesto según el orden**: `(fecha_creacion, id)` por defecto y `(precio, id)` con `orden=precio`, codificado en base64; predicado de fila estrictamente posterior. El `id` desempata valores iguales y garantiza orden total sin filas saltadas ni duplicadas. |
 | Offset + total | Paneles ("mis anuncios", cola de moderación, admin) | `page`/`size` + `total`; default 20, máximo 100. |
 
 Esta definición resuelve el hallazgo de la revisión del PRD (cursor de un solo campo no es estable ante empates). El OpenAPI lo documenta como string opaco: el formato interno puede evolucionar.
@@ -252,7 +252,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | D7 | Subida multipart directa a través de la API (sin URLs prefirmadas) | Pre-signed URLs | Decisión del PRD §7; simplifica el cliente y centraliza validación de tipo/tamaño |
 | D8 | Evento AFTER_COMMIT para email | Envío síncrono; outbox persistente | El PRD exige que el fallo del proveedor nunca revierta el HTTP; outbox persistente sería sobre-ingeniería sin requisito de entrega garantizada (pendiente Q del log de entrega) |
 | D9 | `Specification`s + escape manual para `ILIKE` | FTS de Postgres (`tsvector`) | El requisito es búsqueda por texto libre simple con trigram; FTS añade diccionario y mantenimiento sin beneficio probado en este volumen |
-| D10 | MapStruct para DTO ↔ contrato | Mapeo manual | Volumen de DTOs alto y contract-first; reduce errores de espejo wire/columna |
+| D10 | Mapeo de wire con fábricas estáticas explícitas (`Dtos.de(...)`) en `identity` y `catalog` | MapStruct generado | El mapeo actual es directo y el estático es trivial de testear; MapStruct añade procesador y generación para un beneficio nulo hoy. Si un mapeo se vuelve no trivial (jerarquías, conversiones), se introduce entonces |
 | D11 | Stack fijo: Java 21 (LTS), Spring Boot 4.1 (línea 4.x vigente, sobre Spring Framework 7 / Security 7), Spring MVC, Maven, PostgreSQL 18, OpenAPI 3.1; repositorio backend exclusivo | Java 17/25, Boot 3.5, Gradle, monorepo | Generación estable vigente al iniciar (2026-10). Nota: ni PostgreSQL ni OpenAPI publican ediciones "LTS": son sus versiones mayores actuales (PG 18 con 5 años de soporte) |
 | D12 | Email vía Resend (API HTTP) en prod; adaptador de log a consola en dev que imprime el token crudo | SDK/SMTP de Resend; Mailpit | Resend no ofrece sandbox real ni SDK oficial Java; el adaptador de log permite completar confirmación/reset en dev y mockear el puerto en tests sin dependencias externas |
 | D13 | Validación del contrato OpenAPI 100 % Java dentro de `mvn verify` (swagger-parser + guard SnakeYAML estricto); cero tooling Node/JS en repo y CI | Spectral/oasdiff en CI; `openapi-generator-maven-plugin` | Decisión del propietario: nada de npm/JS. El plugin de openapi-generator NO expone goal `validate` (solo `generate`/`help`); swagger-parser valida de verdad y el guard estricto tapa el agujero de claves duplicadas que los parsers Java ignoran. Un comando local reproduce el CI |
@@ -271,6 +271,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | N3 | Mecanismo exacto del rate limiter (en memoria vs distribuido) | Menor | Solo si se despliegan varias instancias; en un despliegue único, en memoria basta |
 | N4 | Documentación del cursor compuesto en el PRD (dice "cursor opaco estable"; la implementación es compuesta) | Cosmético | Al redactar el OpenAPI |
 | N5 | Cooldown de reenvío de emails (PRD §5): no implementado y el contrato no expone endpoint de "reenviar confirmación". Decidir si se añade el endpoint con cooldown configurable o se retira del PRD | Menor | Al retomar `notifications` (o antes de la entrega final) |
+| N6 | Reemplazo de imágenes en edición: el PRD §7 lo asume ("el borrado ocurre al reemplazar imágenes en edición") pero `PATCH /contenido` es JSON sin multipart. Decidir si se extiende el contrato (PATCH multipart opcional) o se retira del PRD | Menor | Antes de la entrega final; no bloquea moderación |
 
 ## 13. Documentos relacionados
 
