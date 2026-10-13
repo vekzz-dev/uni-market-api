@@ -1,6 +1,7 @@
 package com.unimarket.api.identity;
 
 import com.unimarket.api.shared.security.FiltroAutoridadUsuario;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,12 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Seguridad de identity (SDD §8): BCrypt para {@code hashContrasena} (R11), cadena con las
@@ -56,6 +63,39 @@ public class ConfiguracionSeguridad {
         }
     }
 
+    /**
+     * CORS por configuración (SDD §8): dev permite localhost con cualquier puerto
+     * ({@code http://localhost:*}); prod va vacío salvo que el operador defina
+     * {@code CORS_ORIGENES} — navegador bloqueado por defecto hasta configurarlo.
+     * Sin cookies (Bearer), así que {@code allowCredentials} queda en falso.
+     */
+    @Bean
+    CorsConfigurationSource fuenteCors(
+            @Value("${app.seguridad.cors.origenes-permitidos:}") String origenesCsv) {
+        CorsConfiguration configuracion = new CorsConfiguration();
+        configuracion.setAllowedOriginPatterns(parsearOrigenes(origenesCsv));
+        configuracion.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
+        configuracion.setAllowedHeaders(List.of("*"));
+        // El cliente necesita leer Location en los 201 (p. ej. crear anuncio).
+        configuracion.setExposedHeaders(List.of("Location"));
+        configuracion.setAllowCredentials(false);
+        configuracion.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource fuente = new UrlBasedCorsConfigurationSource();
+        fuente.registerCorsConfiguration("/**", configuracion);
+        return fuente;
+    }
+
+    /** CSV a lista, ignorando vacíos: {@code "a, b"} → {@code ["a","b"]}. */
+    static List<String> parsearOrigenes(String origenesCsv) {
+        if (origenesCsv == null || origenesCsv.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(origenesCsv.split(","))
+                .map(String::strip)
+                .filter(origen -> !origen.isEmpty())
+                .toList();
+    }
+
     /** Cadena de filtros: públicas del contrato abiertas, resto autenticado (stateless). */
     @Bean
     SecurityFilterChain cadenaSeguridad(
@@ -63,8 +103,10 @@ public class ConfiguracionSeguridad {
             AuthenticationEntryPoint puntoEntrada,
             AccessDeniedHandler denegado,
             java.util.List<JwtDecoder> decodificadores,
-            FiltroAutoridadUsuario filtroAutoridad) throws Exception {
+            FiltroAutoridadUsuario filtroAutoridad,
+            CorsConfigurationSource fuenteCors) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
+        http.cors(cors -> cors.configurationSource(fuenteCors));
         http.sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.exceptionHandling(errores -> errores
                 .authenticationEntryPoint(puntoEntrada)

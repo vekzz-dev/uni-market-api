@@ -9,6 +9,11 @@ app:
     proveedor: r2
   notificaciones:
     proveedor: resend
+  seguridad:
+    cors:
+      # Vacío = orígenes de navegador bloqueados. Define CORS_ORIGENES con la lista
+      # exacta de dominios del frontend en producción (separados por coma).
+      origenes-permitidos: ${CORS_ORIGENES:}
 
 logging:
   level:

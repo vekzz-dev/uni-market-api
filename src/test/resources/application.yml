@@ -12,6 +12,8 @@ app:
       ttl-acceso: 15m
     rate-limit:
       intentos-por-minuto: 5
+    cors:
+      origenes-permitidos: "http://localhost:5173"
   media:
     proveedor: filesystem
     raiz: "${java.io.tmpdir}/uni-market-test-media"

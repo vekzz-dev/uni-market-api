@@ -7,3 +7,7 @@ app:
     proveedor: filesystem
   notificaciones:
     proveedor: log
+  seguridad:
+    cors:
+      # Navegador en dev: cualquier puerto local (Vite 5173, CRA 3000, Hoppscotch…).
+      origenes-permitidos: "http://localhost:*,http://127.0.0.1:*"
