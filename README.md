@@ -108,6 +108,7 @@ Ejecuta la suite completa (**171 tests**) contra **PostgreSQL 18 real** (Testcon
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/unimarket` / `unimarket` | Conexión a PostgreSQL |
 | `JWT_SECRETO` | *(vacío — requerido)* | Firma/validación HS256 de access tokens |
 | `RATE_LIMIT_INTENTOS` | `5` | Intentos por minuto en login/registro/reset/reenvío |
+| `CORS_ORIGENES` | localhost (solo dev) | Orígenes de navegador permitidos, separados por coma. **Prod va vacío por defecto** |
 | `MEDIA_PROVEEDOR` | `filesystem` | `filesystem` (dev) o `r2` (prod) |
 | `MEDIA_DIR` | `~/.uni-market` | Raíz del filesystem de medios en dev |
 | `MEDIA_R2_ENDPOINT` / `MEDIA_R2_BUCKET` / `MEDIA_R2_ACCESS_KEY_ID` / `MEDIA_R2_SECRET_ACCESS_KEY` / `MEDIA_R2_URL_PUBLICA` | *(vacías)* | Cloudflare R2 (prod) |
