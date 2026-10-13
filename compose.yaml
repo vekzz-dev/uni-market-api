@@ -39,6 +39,10 @@ services:
       DB_USER: unimarket
       DB_PASSWORD: unimarket
       JWT_SECRETO: ${JWT_SECRETO:?define JWT_SECRETO en .env — ver cabecera de este archivo}
+      # Perfil Spring: dev por defecto (adaptadores locales). Para simular prod:
+      #   SPRING_PROFILES_ACTIVE=prod podman compose up -d api
+      # (prod es fail-fast: exige RESEND_API_KEY, claves de R2 y un DB_URL alcanzable).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       # Medios persistentes del contenedor (filesystem adapter, D14).
       MEDIA_DIR: /data/media
     ports:

@@ -76,6 +76,23 @@ Notas:
 - Para volver al modo desarrollo (IntelliJ) libera el puerto: `podman compose stop api`.
 - Apagar todo: `podman compose down` (los datos y los medios quedan en sus volúmenes).
 
+## Perfiles de Spring
+
+| Perfil | Adaptadores | Cuándo |
+|---|---|---|
+| **`dev`** (default) | Medios en filesystem, emails a consola | Desarrollo local (IntelliJ o compose sin tocar nada) |
+| **`prod`** | Medios en **R2**, emails vía **Resend** | Despliegue real. Es **fail-fast**: si falta `JWT_SECRETO`, `RESEND_API_KEY`, `RESEND_REMITENTE` o cualquier clave de R2, la app **no arranca** y dice exactamente cuál falta |
+
+```bash
+# Simular el arranque de producción (fallará si no están las credenciales — es lo correcto):
+SPRING_PROFILES_ACTIVE=prod podman compose up -d api
+
+# Desarrollo normal (perfil dev implícito):
+podman compose up -d api
+```
+
+El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en IntelliJ si algún día lo necesitas.
+
 ## Pruebas
 
 ```bash

@@ -1,0 +1,16 @@
+# Perfil PROD: sin infraestructura local y con arranque fail-fast.
+# - Medios en Cloudflare R2 (N8) y emails vía Resend (D12): las credenciales llegan
+#   por variables de entorno y son OBLIGATORIAS (ver GuardiaProduccion).
+# - Si falta cualquier credencial crítica, la app NO arranca con un mensaje claro:
+#   jamás se despliega un entorno de producción degradado o inseguro.
+# - Todo sigue siendo sobreescribible por variables de entorno.
+app:
+  media:
+    proveedor: r2
+  notificaciones:
+    proveedor: resend
+
+logging:
+  level:
+    root: INFO
+    org.hibernate: WARN

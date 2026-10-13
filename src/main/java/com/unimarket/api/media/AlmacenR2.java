@@ -24,6 +24,19 @@ public class AlmacenR2 implements AlmacenObjetos {
     private final String urlPublica;
 
     public AlmacenR2(S3Client s3, PropiedadesMedia.R2 r2) {
+        exigirConfiguracion(r2);
+        this.s3 = s3;
+        this.bucket = r2.bucket();
+        this.urlPublica = r2.urlPublica().endsWith("/")
+                ? r2.urlPublica().substring(0, r2.urlPublica().length() - 1)
+                : r2.urlPublica();
+    }
+
+    /**
+     * Validación compartida con el cableado del `S3Client` (que también debe fallar con
+     * mensaje accionable y no con el NPE genérico del SDK cuando el endpoint está vacío).
+     */
+    static void exigirConfiguracion(PropiedadesMedia.R2 r2) {
         if (r2 == null
                 || vacio(r2.endpoint()) || vacio(r2.bucket())
                 || vacio(r2.accessKeyId()) || vacio(r2.secretAccessKey()) || vacio(r2.urlPublica())) {
@@ -31,11 +44,6 @@ public class AlmacenR2 implements AlmacenObjetos {
                     "Proveedor r2 sin configurar: define MEDIA_R2_ENDPOINT, MEDIA_R2_BUCKET, "
                             + "MEDIA_R2_ACCESS_KEY_ID, MEDIA_R2_SECRET_ACCESS_KEY y MEDIA_R2_URL_PUBLICA.");
         }
-        this.s3 = s3;
-        this.bucket = r2.bucket();
-        this.urlPublica = r2.urlPublica().endsWith("/")
-                ? r2.urlPublica().substring(0, r2.urlPublica().length() - 1)
-                : r2.urlPublica();
     }
 
     @Override

@@ -21,9 +21,8 @@ public class ConfiguracionAlmacenR2 {
     @Bean
     S3Client s3Client(PropiedadesMedia propiedades) {
         PropiedadesMedia.R2 r2 = propiedades.r2();
-        if (r2 == null) {
-            throw new IllegalStateException("Proveedor r2 activo pero sin bloque app.media.r2 configurado.");
-        }
+        // Mensaje accionable ANTES de tocar el SDK (con endpoint vacío lanza un NPE genérico).
+        AlmacenR2.exigirConfiguracion(r2);
         return S3Client.builder()
                 .endpointOverride(URI.create(r2.endpoint()))
                 .region(Region.of("auto"))

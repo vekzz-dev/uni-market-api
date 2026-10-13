@@ -1,0 +1,9 @@
+# Perfil DEV (default): todo local, cero dependencias externas.
+# - Medios en filesystem local (D14).
+# - Emails impresos en consola (el token de confirmación sale en el log).
+# Los adaptadores siguen siendo sobreescribibles por variables de entorno.
+app:
+  media:
+    proveedor: filesystem
+  notificaciones:
+    proveedor: log

@@ -232,7 +232,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 | Tema | Decisión |
 |---|---|
-| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, límite de tasa (`RATE_LIMIT_INTENTOS`), API key de Resend, storage (`MEDIA_PROVEEDOR` + `MEDIA_DIR` en dev / credenciales R2 en prod, D14/N8), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
+| Configuración | Externalizada (perfiles Spring **dev/prod** — prod es fail-fast con guarda de credenciales: JWT, R2 y Resend obligatorios): DSN de BD, secreto JWT, límite de tasa (`RATE_LIMIT_INTENTOS`), API key de Resend, storage (`MEDIA_PROVEEDOR` + `MEDIA_DIR` en dev / credenciales R2 en prod, D14/N8), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
 | Respaldo | Backup diario automatizado de PostgreSQL con retención de 7 días (Q4, 2026-10-10) |
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
