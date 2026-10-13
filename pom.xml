@@ -25,6 +25,7 @@
     <mapstruct.version>1.6.3</mapstruct.version>
     <archunit.version>1.5.1</archunit.version>
     <jacoco.version>0.8.15</jacoco.version>
+    <aws-sdk.version>2.46.7</aws-sdk.version>
   </properties>
 
   <dependencies>
@@ -67,6 +68,19 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <scope>runtime</scope>
+    </dependency>
+
+    <!-- Almacenamiento S3-compatible para el adaptador R2 de producción (N8, D14):
+         solo se usa tras `app.media.proveedor=r2`; dev corre con filesystem sin tocar esto. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${aws-sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>apache-client</artifactId>
+      <version>${aws-sdk.version}</version>
     </dependency>
 
     <!-- Mapeo contrato <-> dominio; el procesador se declara en maven-compiler-plugin -->

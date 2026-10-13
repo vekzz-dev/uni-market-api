@@ -105,7 +105,7 @@ public class ServicioPerfil {
         String url = almacen.guardar(ruta, tipo, contenido);
         usuario.setUrlAvatar(url);
         if (anterior != null && !anterior.equals(url)) {
-            almacen.eliminar(AlmacenObjetos.rutaDesdeUrl(anterior));
+            almacen.eliminar(almacen.rutaDesdeUrl(anterior));
         }
         return Dtos.UsuarioRespuesta.de(usuario);
     }
@@ -115,7 +115,7 @@ public class ServicioPerfil {
     public void eliminarAvatar(UUID usuarioId) {
         Usuario usuario = vigente(usuarioId);
         if (usuario.getUrlAvatar() != null) {
-            almacen.eliminar(AlmacenObjetos.rutaDesdeUrl(usuario.getUrlAvatar()));
+            almacen.eliminar(almacen.rutaDesdeUrl(usuario.getUrlAvatar()));
             usuario.setUrlAvatar(null);
         }
     }

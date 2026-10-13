@@ -1,5 +1,6 @@
 package com.unimarket.api.media;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,9 +15,11 @@ import java.util.Optional;
 /**
  * Adaptador filesystem para dev (D14): cero dependencias, raíz configurable. Resuelve
  * {@code ~} al home del usuario y rechaza cualquier ruta que escape de la raíz
- * (normalización + prefijo).
+ * (normalización + prefijo). Es el adaptador por defecto ({@code proveedor} ausente o
+ * {@code filesystem}); con {@code r2} entra el adaptador S3 (N8).
  */
 @Component
+@ConditionalOnProperty(name = "app.media.proveedor", havingValue = "filesystem", matchIfMissing = true)
 public class AlmacenFilesystem implements AlmacenObjetos {
 
     private static final Map<String, String> TIPO_POR_EXTENSION = Map.of(
@@ -76,6 +79,14 @@ public class AlmacenFilesystem implements AlmacenObjetos {
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo eliminar el objeto: " + rutaRelativa, e);
         }
+    }
+
+    @Override
+    public String rutaDesdeUrl(String urlPublica) {
+        if (urlPublica != null && urlPublica.startsWith(PREFIJO_PUBLICO)) {
+            return urlPublica.substring(PREFIJO_PUBLICO.length());
+        }
+        throw new IllegalArgumentException("URL pública fuera del almacenamiento: " + urlPublica);
     }
 
     /** Resuelve la ruta relativa contra la raíz; rechaza el escape con {@code ..}. */

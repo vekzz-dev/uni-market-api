@@ -10,7 +10,10 @@ app:
     jwt:
       secreto: test-secreto-local-solo-para-tests-0123456789abcdef
       ttl-acceso: 15m
+    rate-limit:
+      intentos-por-minuto: 5
   media:
+    proveedor: filesystem
     raiz: "${java.io.tmpdir}/uni-market-test-media"
     avatar-max-bytes: 2097152
     tipos-avatar:

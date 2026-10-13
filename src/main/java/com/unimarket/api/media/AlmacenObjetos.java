@@ -30,16 +30,17 @@ public interface AlmacenObjetos {
     /** Elimina el objeto si existe; inexistente no es error. */
     void eliminar(String rutaRelativa);
 
-    /** URL pública para una ruta relativa. */
+    /**
+     * Ruta relativa a partir de la URL pública (inversa de la construcción del adaptador).
+     * Es de INSTANCIA porque cada adaptador conoce su forma de URL: filesystem extrae tras
+     * {@code /media/} y R2 tras su URL pública base (N8, D14).
+     *
+     * @throws IllegalArgumentException si la URL no pertenece a este almacenamiento
+     */
+    String rutaDesdeUrl(String urlPublica);
+
+    /** URL pública estilo API para una ruta relativa (filesystem y tests). */
     static String urlDesdeRuta(String rutaRelativa) {
         return PREFIJO_PUBLICO + rutaRelativa;
-    }
-
-    /** Ruta relativa desde una URL pública (inversa de {@link #urlDesdeRuta}). */
-    static String rutaDesdeUrl(String urlPublica) {
-        if (urlPublica != null && urlPublica.startsWith(PREFIJO_PUBLICO)) {
-            return urlPublica.substring(PREFIJO_PUBLICO.length());
-        }
-        throw new IllegalArgumentException("URL pública fuera del almacenamiento: " + urlPublica);
     }
 }

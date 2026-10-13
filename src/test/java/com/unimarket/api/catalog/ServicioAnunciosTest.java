@@ -55,8 +55,8 @@ class ServicioAnunciosTest {
     @BeforeEach
     void preparar() {
         medios = new PropiedadesMedia(
-                "/tmp/uni-market-test", 2097152, List.of("image/jpeg", "image/png", "image/gif", "image/webp"),
-                5, 5242880, List.of("image/jpeg", "image/png", "image/gif", "image/webp"));
+                "/tmp/uni-market-test", "filesystem", 2097152, List.of("image/jpeg", "image/png", "image/gif", "image/webp"),
+                5, 5242880, List.of("image/jpeg", "image/png", "image/gif", "image/webp"), null);
         servicio = new ServicioAnuncios(repositorio, almacen, medios);
     }
 

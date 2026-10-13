@@ -45,6 +45,9 @@ app:
     jwt:
       secreto: ${JWT_SECRETO:}
       ttl-acceso: 15m
+    # Límite de tasa configurable (Q1/R13, N3): intentos por minuto y propósito.
+    rate-limit:
+      intentos-por-minuto: ${RATE_LIMIT_INTENTOS:5}
   # Correo transaccional (SDD §10, D12): `log` imprime el token en consola (dev);
   # `resend` envía vía API HTTP con RESEND_API_KEY y RESEND_REMITENTE (prod).
   notificaciones:
@@ -54,9 +57,10 @@ app:
     resend:
       api-key: ${RESEND_API_KEY:}
       remitente: ${RESEND_REMITENTE:no-reply@example.com}
-  # Medios (SDD §10, D14): raíz del filesystem en dev (datos de usuario, no config).
-  # TODO(prod): adaptador R2 tras `proveedor: r2` con endpoint/bucket/keys por entorno.
+  # Medios (SDD §10, D14/N8): filesystem en dev (datos de usuario, no config) y R2 en prod
+  # (credenciales solo por entorno; URL pública r2.dev o dominio propio).
   media:
+    proveedor: ${MEDIA_PROVEEDOR:filesystem}
     raiz: "${MEDIA_DIR:~/.uni-market}"
     avatar-max-bytes: 2097152
     tipos-avatar:
@@ -64,7 +68,7 @@ app:
       - image/png
       - image/gif
       - image/webp
-    # Límites de anuncios (R8): los aplica la aplicación con 422; el contenedor admite 10 MB.
+    # Límites de anuncios (R8): los aplica la aplicación con 422; el contenedor admite 10 MB/archivo.
     anuncio-max-imagenes: 5
     imagen-max-bytes: 5242880
     tipos-imagen:
@@ -72,6 +76,12 @@ app:
       - image/png
       - image/gif
       - image/webp
+    r2:
+      endpoint: ${MEDIA_R2_ENDPOINT:}
+      bucket: ${MEDIA_R2_BUCKET:}
+      access-key-id: ${MEDIA_R2_ACCESS_KEY_ID:}
+      secret-access-key: ${MEDIA_R2_SECRET_ACCESS_KEY:}
+      url-publica: ${MEDIA_R2_URL_PUBLICA:}
 
 # Pendiente de agregar cuando existan sus módulos (única fuente de verdad, SDD §10):
 # - moderation: decisión de revisión vive en catalog; sin config propia aún.
