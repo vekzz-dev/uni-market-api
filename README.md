@@ -18,13 +18,13 @@ Backend del marketplace universitario **Uni Market**: registro con confirmación
 
 ## Arranque local
 
-1. **Levanta PostgreSQL** (una sola vez):
+1. **Levanta PostgreSQL** (el `compose.yaml` del repo usa los mismos defaults que la app):
 
 ```bash
-podman run --name unimarket-pg \
-  -e POSTGRES_USER=unimarket -e POSTGRES_PASSWORD=unimarket -e POSTGRES_DB=unimarket \
-  -p 5432:5432 -d postgres:18
-# Con Docker: cambia `podman` por `docker`.
+podman compose up -d
+# Con Docker: docker compose up -d
+# Datos persistentes en el volumen `unimarket-pgdata` (sobreviven reinicios).
+# Apagarlo:  podman compose down   ·   Volver a levantarlo:  podman compose up -d
 ```
 
 2. **Arranca la API** (Flyway aplica el esquema V1–V3 automáticamente):

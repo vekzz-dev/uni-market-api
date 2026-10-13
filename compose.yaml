@@ -1,0 +1,25 @@
+# Entorno de desarrollo de Uni Market: PostgreSQL 18 con datos persistentes.
+# Uso: `podman compose up -d` (o `docker compose up -d`). Los valores coinciden
+# con los defaults de src/main/resources/application.yml — cero configuración extra.
+services:
+  postgres:
+    image: postgres:18
+    container_name: unimarket-pg
+    environment:
+      POSTGRES_USER: unimarket
+      POSTGRES_PASSWORD: unimarket
+      POSTGRES_DB: unimarket
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18 cambió su layout: PGDATA vive en /var/lib/postgresql/18/docker
+      # y el VOLUME declarado es /var/lib/postgresql (no .../data).
+      - unimarket-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unimarket -d unimarket"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  unimarket-pgdata:
