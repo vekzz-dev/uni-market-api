@@ -232,7 +232,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 | Tema | Decisión |
 |---|---|
-| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, API key de Resend, storage (`MEDIA_DIR` en dev / credenciales R2 en prod, D14), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
+| Configuración | Externalizada (perfiles Spring): DSN de BD, secreto JWT, límite de tasa (`RATE_LIMIT_INTENTOS`), API key de Resend, storage (`MEDIA_PROVEEDOR` + `MEDIA_DIR` en dev / credenciales R2 en prod, D14/N8), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
 | Respaldo | Backup diario automatizado de PostgreSQL con retención de 7 días (Q4, 2026-10-10) |
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
@@ -256,7 +256,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | D11 | Stack fijo: Java 21 (LTS), Spring Boot 4.1 (línea 4.x vigente, sobre Spring Framework 7 / Security 7), Spring MVC, Maven, PostgreSQL 18, OpenAPI 3.1; repositorio backend exclusivo | Java 17/25, Boot 3.5, Gradle, monorepo | Generación estable vigente al iniciar (2026-10). Nota: ni PostgreSQL ni OpenAPI publican ediciones "LTS": son sus versiones mayores actuales (PG 18 con 5 años de soporte) |
 | D12 | Email vía Resend (API HTTP) en prod; adaptador de log a consola en dev que imprime el token crudo | SDK/SMTP de Resend; Mailpit | Resend no ofrece sandbox real ni SDK oficial Java; el adaptador de log permite completar confirmación/reset en dev y mockear el puerto en tests sin dependencias externas |
 | D13 | Validación del contrato OpenAPI 100 % Java dentro de `mvn verify` (swagger-parser + guard SnakeYAML estricto); cero tooling Node/JS en repo y CI | Spectral/oasdiff en CI; `openapi-generator-maven-plugin` | Decisión del propietario: nada de npm/JS. El plugin de openapi-generator NO expone goal `validate` (solo `generate`/`help`); swagger-parser valida de verdad y el guard estricto tapa el agujero de claves duplicadas que los parsers Java ignoran. Un comando local reproduce el CI |
-| D14 | Media: adaptador **filesystem en dev** (raíz `${MEDIA_DIR:~/.uni-market}` — datos de usuario, no configuración; OS-independiente vía `user.home`) y adaptador **S3-compatible apuntando a Cloudflare R2 en prod** (URL pública `r2.dev`; un dominio propio la reemplaza después) | MinIO local en dev; uploads dentro del repo; URLs prefirmadas | Cero dependencias para correr en dev (docker-less); detrás del puerto `AlmacenObjetos` el cambio dev→prod es un bean + propiedades. R2 encaja sin costo y con API S3. `~/.config` rechazado: es para configuración, no para datos generados |
+| D14 | Media: adaptador **filesystem en dev** (raíz `${MEDIA_DIR:~/.uni-market}` — datos de usuario, no configuración; OS-independiente vía `user.home`) y adaptador **S3-compatible apuntando a Cloudflare R2 en prod** (URL pública `r2.dev`; un dominio propio la reemplaza después). Implementados ambos el 2026-10-12 (N8), conmutados por `MEDIA_PROVEEDOR` | MinIO local en dev; uploads dentro del repo; URLs prefirmadas | Cero dependencias para correr en dev (docker-less); detrás del puerto `AlmacenObjetos` el cambio dev→prod es un bean + propiedades. R2 encaja sin costo y con API S3. `~/.config` rechazado: es para configuración, no para datos generados |
 
 ## 12. Riesgos y preguntas abiertas
 
@@ -268,12 +268,12 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 |---|---|---|---|
 | N1 | Correcciones del DBDD (índices de tokens, `NO ACTION` explícito, CHECKs de trail e `icono`) | — | **Resuelto (2026-10-10)**: aplicadas al DBDD |
 | N2 | "Log de entrega" de emails sin definir (logs vs tabla) | Menor | **Resuelto (2026-10-10)**: logs estructurados, sin tabla de auditoría |
-| N3 | Mecanismo exacto del rate limiter (en memoria vs distribuido) | Menor | Solo si se despliegan varias instancias; en un despliegue único, en memoria basta |
+| N3 | **Resuelto (2026-10-12)**: rate limiter en memoria con **límite configurable** (`app.seguridad.rate-limit.intentos-por-minuto`, default 5). El almacenamiento en memoria es correcto por diseño para el despliegue único; un multi-instancia exigiría backing compartido (decisión consciente, no deuda oculta) | — | — |
 | N4 | **Resuelto (2026-10-12)**: el OpenAPI redactado documenta el cursor compuesto (`(fechaCreacion, id)` / `(precio, id)` según orden); el texto del PRD ("cursor opaco estable") queda a nivel de producto y es compatible | — | — |
 | N5 | **Resuelto (2026-10-12)**: `POST /auth/reenviar-confirmacion` con `202` genérico (R13), cooldown configurable (`app.notificaciones.cooldown-reenvio`, default 2 min), invalidación del token previo (R11) y rate limit — implementado con tests de integración | — | — |
 | N6 | **Resuelto (2026-10-12)**: `PUT /anuncios/{id}/imagenes` (multipart 1..5) reemplaza el set completo, borra las viejas solo post-commit (R8) y resetea la revisión (R6) — implementado con tests de integración y de compensación | — | — |
 | N7 | Búsqueda con acentos: no-objetivo explícito registrado en el PRD §7 (decisión 2026-10-12) | — | — |
-| N8 | **Adaptador R2 de producción por implementar** (hoy solo existe el de filesystem de dev, D14): tras el puerto `AlmacenObjetos` es un bean + credenciales por entorno; requerido antes de cualquier despliegue real | Menor | Al preparar despliegue; no bloquea la entrega académica |
+| N8 | **Resuelto (2026-10-12)**: adaptador `AlmacenR2` implementado (SDK v2 de AWS, activo tras `app.media.proveedor=r2` con credenciales por entorno) con unit tests contra cliente mockeado; el puerto `AlmacenObjetos` ganó `rutaDesdeUrl` de instancia para soportar URLs de R2. Verificación contra R2 real es de despliegue | Menor | Al desplegar: validar subida/lectura pública reales contra R2 |
 
 ## 13. Documentos relacionados
 
