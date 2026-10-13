@@ -273,6 +273,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | N5 | **Resuelto (2026-10-12)**: `POST /auth/reenviar-confirmacion` con `202` genérico (R13), cooldown configurable (`app.notificaciones.cooldown-reenvio`, default 2 min), invalidación del token previo (R11) y rate limit — implementado con tests de integración | — | — |
 | N6 | **Resuelto (2026-10-12)**: `PUT /anuncios/{id}/imagenes` (multipart 1..5) reemplaza el set completo, borra las viejas solo post-commit (R8) y resetea la revisión (R6) — implementado con tests de integración y de compensación | — | — |
 | N7 | Búsqueda con acentos: no-objetivo explícito registrado en el PRD §7 (decisión 2026-10-12) | — | — |
+| N8 | **Adaptador R2 de producción por implementar** (hoy solo existe el de filesystem de dev, D14): tras el puerto `AlmacenObjetos` es un bean + credenciales por entorno; requerido antes de cualquier despliegue real | Menor | Al preparar despliegue; no bloquea la entrega académica |
 
 ## 13. Documentos relacionados
 
