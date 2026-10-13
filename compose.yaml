@@ -1,6 +1,12 @@
-# Entorno de desarrollo de Uni Market: PostgreSQL 18 con datos persistentes.
-# Uso: `podman compose up -d` (o `docker compose up -d`). Los valores coinciden
-# con los defaults de src/main/resources/application.yml — cero configuración extra.
+# =============================================================================
+# Uni Market — orquestación local.
+#
+#   Solo la BD (desarrollo con IntelliJ):   podman compose up -d postgres
+#   Stack completo en contenedores:         podman compose up -d --build
+#
+# Requiere un archivo `.env` en la raíz (ignorado por git) con:
+#   JWT_SECRETO=<32+ bytes>   →  printf 'JWT_SECRETO=%s\n' "$(openssl rand -base64 32)" > .env
+# =============================================================================
 services:
   postgres:
     image: postgres:18
@@ -21,5 +27,25 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build: .
+    container_name: unimarket-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Dentro de la red de compose el host es el nombre del servicio, no localhost.
+      DB_URL: jdbc:postgresql://postgres:5432/unimarket
+      DB_USER: unimarket
+      DB_PASSWORD: unimarket
+      JWT_SECRETO: ${JWT_SECRETO:?define JWT_SECRETO en .env — ver cabecera de este archivo}
+      # Medios persistentes del contenedor (filesystem adapter, D14).
+      MEDIA_DIR: /data/media
+    ports:
+      - "8080:8080"
+    volumes:
+      - unimarket-media:/data/media
+
 volumes:
   unimarket-pgdata:
+  unimarket-media:

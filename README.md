@@ -18,13 +18,16 @@ Backend del marketplace universitario **Uni Market**: registro con confirmación
 
 ## Arranque local
 
-1. **Levanta PostgreSQL** (el `compose.yaml` del repo usa los mismos defaults que la app):
+1. **Prepara el secreto y levanta PostgreSQL** (el `compose.yaml` del repo usa los mismos defaults que la app):
 
 ```bash
-podman compose up -d
-# Con Docker: docker compose up -d
+# Único requisito: el secreto en .env (ignorado por git). Genéralo una sola vez:
+printf 'JWT_SECRETO=%s\n' "$(openssl rand -base64 32)" > .env
+
+podman compose up -d postgres
+# Con Docker: docker compose up -d postgres
 # Datos persistentes en el volumen `unimarket-pgdata` (sobreviven reinicios).
-# Apagarlo:  podman compose down   ·   Volver a levantarlo:  podman compose up -d
+# Apagarlo:  podman compose down   ·   Volver a levantarlo:  podman compose up -d postgres
 ```
 
 2. **Arranca la API** (Flyway aplica el esquema V1–V3 automáticamente):
@@ -56,6 +59,22 @@ curl -s localhost:8080/v1/usuarios/me -H "Authorization: Bearer PEGAR_ACCESS"
 > **Aprobar un anuncio** requiere rol `moderador`/`admin` (se asignan por SQL en dev):
 > `UPDATE usuarios SET rol = 'moderador' WHERE email = 'ana@uni.edu';`
 > y luego `POST /v1/moderacion/anuncios/{id}/decisiones` con `{"decision":"aprobar"}`.
+
+## Stack completo en contenedores (demo / entrega)
+
+Para levantar **base de datos + API** sin IntelliJ ni Maven local:
+
+```bash
+podman compose up -d --build
+# API en http://localhost:8080/v1 · el primer build tarda unos minutos
+# (descarga dependencias dentro de la imagen; los siguientes son incrementales).
+```
+
+Notas:
+- La imagen es multi-stage (`Dockerfile`): Maven compila y el runtime final es solo un JRE.
+- Los medios subidos persisten en el volumen `unimarket-media`.
+- Para volver al modo desarrollo (IntelliJ) libera el puerto: `podman compose stop api`.
+- Apagar todo: `podman compose down` (los datos y los medios quedan en sus volúmenes).
 
 ## Pruebas
 
