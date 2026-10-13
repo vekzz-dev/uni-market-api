@@ -1,6 +1,7 @@
 package com.unimarket.api.identity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -8,8 +9,9 @@ import java.util.UUID;
 /**
  * Acceso a {@code usuarios} (R1/R2): la búsqueda por email ignora el caso y excluye las
  * cuentas dadas de baja, en espejo al índice parcial {@code ux_usuarios_email_activo}.
+ * {@code JpaSpecificationExecutor} lo usa el panel admin (filtro activos + rol, R15).
  */
-public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
+public interface UsuarioRepository extends JpaRepository<Usuario, UUID>, JpaSpecificationExecutor<Usuario> {
 
     /** Cuenta activa por email, comparando sin distinguir mayúsculas (R2). */
     Optional<Usuario> findByEmailIgnoreCaseAndFechaEliminacionIsNull(String email);
