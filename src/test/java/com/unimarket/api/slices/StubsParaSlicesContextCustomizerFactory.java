@@ -4,6 +4,7 @@ import com.unimarket.api.catalog.ServicioAnuncios;
 import com.unimarket.api.catalog.ServicioCatalogo;
 import com.unimarket.api.catalog.ServicioRevision;
 import com.unimarket.api.identity.LimitadorTasa;
+import com.unimarket.api.messaging.ServicioConversaciones;
 import com.unimarket.api.identity.ServicioPerfil;
 import com.unimarket.api.identity.ServicioRecuperacion;
 import com.unimarket.api.identity.ServicioRegistro;
@@ -60,6 +61,7 @@ public class StubsParaSlicesContextCustomizerFactory implements ContextCustomize
             registrarSiFalta(generico, ServicioAnuncios.class, () -> Mockito.mock(ServicioAnuncios.class));
             registrarSiFalta(generico, ServicioCatalogo.class, () -> Mockito.mock(ServicioCatalogo.class));
             registrarSiFalta(generico, ServicioRevision.class, () -> Mockito.mock(ServicioRevision.class));
+            registrarSiFalta(generico, ServicioConversaciones.class, () -> Mockito.mock(ServicioConversaciones.class));
             registrarSiFalta(generico, LimitadorTasa.class, LimitadorTasa::new);
             registrarSiFalta(generico, AlmacenObjetos.class, () -> Mockito.mock(AlmacenObjetos.class));
         }

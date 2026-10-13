@@ -103,6 +103,19 @@ public class ServicioCatalogo {
         return DtosAnuncios.AnuncioPublico.de(anuncio);
     }
 
+    /**
+     * Resumen SIN filtro de visibilidad, para el historial de mensajería (R16): una
+     * conversación sigue legible aunque el anuncio después sea {@code vendido}, {@code inactivo}
+     * o {@code eliminado} (el borrado es lógico, la fila siempre existe). Solo consumo interno
+     * entre módulos — jamás se expone por una ruta pública.
+     */
+    @Transactional(readOnly = true)
+    public DtosAnuncios.AnuncioPublico resumenSinVisibilidad(UUID anuncioId) {
+        return anuncios.findById(anuncioId)
+                .map(DtosAnuncios.AnuncioPublico::de)
+                .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
+    }
+
     /** Panel del vendedor: ownership como predicado (R7) + offset con total. */
     @Transactional(readOnly = true)
     public RespuestaColeccion<DtosAnuncios.AnuncioPanel> misAnuncios(UUID vendedorId, Integer pagina, Integer limite) {
