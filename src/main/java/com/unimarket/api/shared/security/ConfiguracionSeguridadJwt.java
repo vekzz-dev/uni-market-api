@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
  * {@code identity}; hasta entonces la app arranca sin él.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(PropiedadesJwt.class)
+@EnableConfigurationProperties({PropiedadesJwt.class, PropiedadesRateLimit.class})
 public class ConfiguracionSeguridadJwt {
 
     /** Decoder HS256 con el secreto externalizado; sin secreto no hay bean (T4). */

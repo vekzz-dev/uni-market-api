@@ -1,5 +1,6 @@
 package com.unimarket.api.identity;
 
+import com.unimarket.api.shared.security.PropiedadesRateLimit;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -9,26 +10,32 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Límite de tasa en memoria (Q1/R13, N3): ventana deslizante de 5 intentos por minuto por
- * propósito, IP y email. Sin librería externa; basta en despliegue único (SDD N3).
+ * Límite de tasa en memoria (Q1/R13, N3): ventana deslizante por minuto y propósito con
+ * intentos CONFIGURABLES ({@code app.seguridad.rate-limit.intentos-por-minuto}, default 5).
+ * Sin librería externa; suficiente en el despliegue único documentado (un multi-instancia
+ * exigiría un backing compartido).
  *
- * <p>Cada intento cuenta ANTES de procesarse, de modo que el sexto responde {@code 429}
- * aunque la solicitud habría fallado por negocio (p. ej. email duplicado).
+ * <p>Cada intento cuenta ANTES de procesarse, de modo que el que excede el límite responde
+ * {@code 429} aunque la solicitud habría fallado por negocio (p. ej. email duplicado).
  */
 @Component
 public class LimitadorTasa {
 
-    /** Intentos permitidos por ventana y propósito. */
-    static final int MAX_INTENTOS = 5;
-
     private static final Duration VENTANA = Duration.ofMinutes(1);
 
+    private final int maxIntentos;
+
     private final ConcurrentHashMap<String, ArrayDeque<Instant>> intentos = new ConcurrentHashMap<>();
+
+    /** El límite llega de configuración; {@code null} (tests planos) usa el default. */
+    public LimitadorTasa(PropiedadesRateLimit propiedades) {
+        this.maxIntentos = propiedades == null ? 5 : propiedades.intentosOPorDefecto();
+    }
 
     /**
      * Registra un intento y falla con {@code 429} si la ventana está agotada.
      *
-     * @param proposito login, registro o reset (espacio de claves separado por flujo)
+     * @param proposito login, registro, reset o reenvío (espacio de claves separado por flujo)
      * @param ip        IP remota del cliente
      * @param email     email crudo de la solicitud (se normaliza para la clave)
      */
@@ -41,7 +48,7 @@ public class LimitadorTasa {
             while (!cola.isEmpty() && cola.peekFirst().isBefore(corte)) {
                 cola.pollFirst();
             }
-            if (cola.size() >= MAX_INTENTOS) {
+            if (cola.size() >= maxIntentos) {
                 throw new DemasiadasPeticionesException(
                         "Demasiados intentos; espera un minuto e intenta de nuevo.");
             }

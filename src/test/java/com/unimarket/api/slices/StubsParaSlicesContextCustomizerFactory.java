@@ -66,7 +66,7 @@ public class StubsParaSlicesContextCustomizerFactory implements ContextCustomize
             registrarSiFalta(generico, ServicioConversaciones.class, () -> Mockito.mock(ServicioConversaciones.class));
             registrarSiFalta(generico, ServicioAdministracionUsuarios.class, () -> Mockito.mock(ServicioAdministracionUsuarios.class));
             registrarSiFalta(generico, ServicioAdminCategorias.class, () -> Mockito.mock(ServicioAdminCategorias.class));
-            registrarSiFalta(generico, LimitadorTasa.class, LimitadorTasa::new);
+            registrarSiFalta(generico, LimitadorTasa.class, () -> new LimitadorTasa(null));
             registrarSiFalta(generico, AlmacenObjetos.class, () -> Mockito.mock(AlmacenObjetos.class));
         }
 
