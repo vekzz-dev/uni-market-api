@@ -24,7 +24,7 @@
 | 11 | Reset responde idéntico exista o no + rate limit | ✅ | `IdentityFlujoIntegrationTest` (202 idéntico, 429) |
 | 12 | Vendedor no modifica ajenos (403) ni ve ajenos en su panel | ✅ | `CatalogoFlujoIntegrationTest.editarAjenoYReset` + `AnuncioRepositoryTest.soloDelVendedor` |
 | 13 | Límites de imagen con status correcto y sin objetos subidos (5 pareadas/5 MB/avatar 2 MB/tipos) | ✅ | `CatalogoFlujoIntegrationTest.rechazosSinHuerfanos` (422 sin huérfanos) + `ServicioAnunciosTest` (firma/tamaño/cantidad) + `IdentityFlujoIntegrationTest` (avatar) + `DbSchemaVerificationTest` (CHECKs pareados) |
-| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn clean verify`: 183 tests, gate ≥ 80 % activo (90.7 %), `OpenApiContractTest` (estructura + sin claves duplicadas). **Nota honesta**: el CI está definido y el build es idéntico en local; su primera ejecución real será al publicar el repo en GitHub |
+| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn clean verify`: 193 tests, gate ≥ 80 % activo (91.6 %), `OpenApiContractTest` (estructura + sin claves duplicadas). El pipeline de GitHub Actions ejecuta este mismo comando sobre el runner fijado `ubuntu-24.04` |
 | 15 | Web y móvil consumen EXCLUSIVAMENTE el cliente generado | ➖ N/A en este repo | Los clientes viven en repos externos (decisión de alcance, PRD §7); este repo garantiza la fuente de verdad y su validación en el build |
 | 16 | Sin políticas RLS ni triggers en la BD | ✅ | `AceptacionFinalIntegrationTest.sinRlsNiTriggers` (`pg_policies`=0, `pg_trigger` no internos=0) + `DbSchemaVerificationTest` |
 | 17 | Apertura solo sobre anuncio visible con vendedor activo; envío con contraparte activa; historial previo legible | ✅ | `MensajeriaFlujoIntegrationTest.apertura/participacionYEnvio/flujoCompleto` |
@@ -33,6 +33,6 @@
 
 **16 de 17 criterios verificados con evidencia automatizada; 1 fuera de alcance de este repositorio por diseño (criterio 15)**. La entrega queda cerrada con:
 
-- `mvn clean verify` reproducible: 183 tests · 0 fallos · 90.7 % de líneas con el gate activo.
+- `mvn clean verify` reproducible: 193 tests · 0 fallos · 91.6 % de líneas con el gate activo.
 - Contrato OpenAPI validado en el build (estructura, `$ref`s y claves duplicadas).
 - Pendientes del SDD sin deudas abiertas: N3 y N8 resueltos; las notas restantes son decisiones conscientes (memoria del limiter en despliegue único; verificación real de R2 al desplegar).

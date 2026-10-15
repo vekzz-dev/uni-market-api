@@ -132,6 +132,8 @@ Reglas transversales:
 
 Checklist verificable:
 
+> **Verificación (2026-10-14)**: 16 de los 17 criterios están evidenciados por la suite automatizada — detalle por criterio en `odd/tasks/aceptacion-final.md`. El criterio sobre los clientes web/móvil queda fuera de este repositorio por diseño (repos propios que consumen el contrato).
+
 - [ ] Un registro nuevo crea usuario `miembro` sin email confirmado y el login se rechaza hasta confirmar.
 - [ ] Registrar dos veces el mismo email en distinto caso responde `409` y no crea duplicados.
 - [ ] El email de una cuenta dada de baja queda disponible y la baja no destruye anuncios, conversaciones ni mensajes.
