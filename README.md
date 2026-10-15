@@ -22,28 +22,35 @@ No necesitas instalar PostgreSQL: el `compose.yaml` lo levanta.
 
 ## Arranque local
 
-1. **Prepara el secreto y levanta PostgreSQL** (el `compose.yaml` del repo usa los mismos defaults que la app):
+### Paso 1 — Secreto y base de datos (una vez por sesión de trabajo)
 
 ```bash
-# Único requisito: el secreto en .env (ignorado por git). Genéralo una sola vez:
+# El secreto se genera UNA sola vez por máquina (ignorado por git):
 printf 'JWT_SECRETO=%s\n' "$(openssl rand -base64 32)" > .env
 
 podman compose up -d postgres
 # Con Docker: docker compose up -d postgres
-# Datos persistentes en el volumen `unimarket-pgdata` (sobreviven reinicios).
-# Apagarlo:  podman compose down   ·   Volver a levantarlo:  podman compose up -d postgres
+# Datos persistentes en el volumen del compose; `down`/`up` los conserva.
 ```
 
-2. **Arranca la API** (Flyway aplica el esquema V1–V3 automáticamente):
+### Paso 2 — Arranca la API (elige tu modo)
+
+**Modo A — IntelliJ (recomendado para programar)**
+
+1. `cat .env` y copia el valor del secreto.
+2. **Run → Edit Configurations → UniMarketApiApplication → Environment variables**: `JWT_SECRETO=` y pega el valor (solo la primera vez).
+3. ▶ Run. Esperado en el log: perfil `dev` · Flyway al día · `Tomcat started on port 8080`.
+
+**Modo B — Terminal**
 
 ```bash
-# Toma el MISMO secreto del .env (no generes otro: los tokens deben sobrevivir entre arranques):
-set -a && source .env && set +a
+set -a && source .env && set +a   # el MISMO secreto del .env (no generes otro)
 mvn spring-boot:run
-# API en http://localhost:8080/v1
 ```
 
-3. **Flujo de humo** (registro → confirmación → login):
+> En ambos casos la API queda en `http://localhost:8080/v1` y **el token de confirmación de email sale en el log de la app** (en IntelliJ: su consola).
+
+### Paso 3 — Flujo de humo (registro → confirmación → login)
 
 ```bash
 # Registro (201). El email de confirmación se imprime en el log de la app en dev:
