@@ -2,7 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aprobado — implementado y verificado |
+| Última actualización | 2026-10-14 (aceptación del §8: evidencia en `odd/tasks/aceptacion-final.md`) |
 | Fecha | 2026-10-09 |
 | Versión | 2.0 (documento autónomo, sin dependencias externas) |
 | Audiencia | Equipo de producto, diseño, backend y clientes (web/móvil) |

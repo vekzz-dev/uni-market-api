@@ -4,9 +4,10 @@ Documento autónomo: describe por completo el esquema de datos de **Uni Market**
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aprobado — implementado en V1–V3 y verificado contra PostgreSQL 18 |
+| Última actualización | 2026-10-14 |
 | Fecha | 2026-10-09 |
-| Motor / migraciones | PostgreSQL 18 (última versión mayor vigente; PostgreSQL no publica ediciones "LTS": soporte de 5 años por versió mayor); Flyway (versionadas, forward-only) |
+| Motor / migraciones | PostgreSQL 18 (última versión mayor vigente; PostgreSQL no publica ediciones "LTS": soporte de 5 años por versión mayor); Flyway (versionadas, forward-only) |
 | Extensión requerida | `pg_trgm` (búsqueda difusa por trigram) |
 ## 1. Database Overview
 

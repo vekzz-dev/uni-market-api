@@ -4,7 +4,8 @@ Documento autónomo para la implementación técnica del backend. Define el *có
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Aprobado — implementado (decisiones D1–D14 vigentes) |
+| Última actualización | 2026-10-14 |
 | Fecha | 2026-10-10 |
 | Versión | 1.0 |
 | Alcance | Solo este repositorio backend. Web y móvil viven en repos propios (fuera de alcance). |
