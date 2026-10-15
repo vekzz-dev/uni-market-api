@@ -16,7 +16,9 @@ Backend del marketplace universitario **Uni Market**: registro con confirmación
 |---|---|
 | JDK | 21 o superior (probado en 25) |
 | Maven | 3.9+ |
-| PostgreSQL | 18 (o contenedor Podman/Docker) |
+| Contenedor | Podman o Docker — para la BD de desarrollo y para Testcontainers en las pruebas |
+
+No necesitas instalar PostgreSQL: el `compose.yaml` lo levanta.
 
 ## Arranque local
 
@@ -35,7 +37,8 @@ podman compose up -d postgres
 2. **Arranca la API** (Flyway aplica el esquema V1–V3 automáticamente):
 
 ```bash
-export JWT_SECRETO=$(openssl rand -base64 32)   # obligatorio para validar/emitir tokens
+# Toma el MISMO secreto del .env (no generes otro: los tokens deben sobrevivir entre arranques):
+set -a && source .env && set +a
 mvn spring-boot:run
 # API en http://localhost:8080/v1
 ```
@@ -43,11 +46,13 @@ mvn spring-boot:run
 3. **Flujo de humo** (registro → confirmación → login):
 
 ```bash
-# Registro (201). El email de confirmación se imprime en consola en dev (adaptador de log).
+# Registro (201). El email de confirmación se imprime en el log de la app en dev:
+#   · IntelliJ: la consola de la aplicación
+#   · Compose:  podman logs unimarket-api | grep -i token
 curl -s -X POST localhost:8080/v1/usuarios -H 'Content-Type: application/json' \
   -d '{"email":"ana@uni.edu","nombre":"Ana","contrasena":"secreta123"}'
 
-# Copia el token del log de consola y confirma:
+# Copia el token del log y confirma:
 curl -s 'localhost:8080/v1/auth/confirmar-email?token=PEGAR_TOKEN'
 
 # Login → accessToken + refreshToken:
@@ -60,9 +65,13 @@ curl -s localhost:8080/v1/usuarios/me -H "Authorization: Bearer PEGAR_ACCESS"
 
 > **Correlación de logs**: todas las respuestas traen un header `X-Request-Id` (puedes enviar el tuyo) — úsalo para buscar el request en los logs: cada línea lleva su `[traceId]`.
 
-> **Aprobar un anuncio** requiere rol `moderador`/`admin` (se asignan por SQL en dev):
-> `UPDATE usuarios SET rol = 'moderador' WHERE email = 'ana@uni.edu';`
-> y luego `POST /v1/moderacion/anuncios/{id}/decisiones` con `{"decision":"aprobar"}`.
+> **Roles en dev** (moderador para aprobar anuncios, admin para el panel):
+> ```bash
+> podman exec unimarket-pg psql -U unimarket -d unimarket -c \
+>   "UPDATE usuarios SET rol='moderador', fecha_verificacion_email=now() WHERE email='ana@uni.edu';"
+> # Admin (todo lo del moderador + gestión de usuarios): cambia rol='admin'
+> ```
+> Con eso: `POST /v1/moderacion/anuncios/{id}/decisiones` con `{"decision":"aprobar"}`. El cambio surte efecto en el **siguiente request** (sin relogin: la BD es la autoridad del rol).
 
 ## Stack completo en contenedores (demo / entrega)
 
@@ -119,6 +128,7 @@ Ejecuta la suite completa (**193 tests**) contra **PostgreSQL 18 real** (Testcon
 | `NOTIFICACIONES_PROVEEDOR` | `log` | `log` (consola, dev) o `resend` (prod) |
 | `RESEND_API_KEY` / `RESEND_REMITENTE` | *(vacías)* | Resend (prod) |
 | `NOTIFICACIONES_COOLDOWN_REENVIO` | `2m` | Cooldown del reenvío de confirmación |
+| `SPRING_PROFILES_ACTIVE` | `dev` | Perfil activo: `dev` o `prod` (prod es fail-fast con las credenciales de arriba) |
 
 ## Mapa de la API (`/v1`)
 
@@ -141,4 +151,5 @@ src/test/java/                     unit + slices + integración Testcontainers
 docs/                              PRD · DBDD · SDD (fuente de verdad del diseño)
 odd/tasks/                         registro de trabajo por feature (con evidencia)
 openapi.yaml                       contrato de la API (validado en el build)
+compose.yaml + Dockerfile          entorno local: BD (+ API opcional) en contenedores
 ```
