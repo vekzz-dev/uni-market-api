@@ -56,6 +56,8 @@ curl -s -X POST localhost:8080/v1/auth/login -H 'Content-Type: application/json'
 curl -s localhost:8080/v1/usuarios/me -H "Authorization: Bearer PEGAR_ACCESS"
 ```
 
+> **Correlación de logs**: todas las respuestas traen un header `X-Request-Id` (puedes enviar el tuyo) — úsalo para buscar el request en los logs: cada línea lleva su `[traceId]`.
+
 > **Aprobar un anuncio** requiere rol `moderador`/`admin` (se asignan por SQL en dev):
 > `UPDATE usuarios SET rol = 'moderador' WHERE email = 'ana@uni.edu';`
 > y luego `POST /v1/moderacion/anuncios/{id}/decisiones` con `{"decision":"aprobar"}`.
