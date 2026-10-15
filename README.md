@@ -1,6 +1,8 @@
 # Uni Market — API
 
 [![CI](https://github.com/vekzz-dev/uni-market-api/actions/workflows/ci.yml/badge.svg)](https://github.com/vekzz-dev/uni-market-api/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/vekzz-dev/uni-market-api)](https://github.com/vekzz-dev/uni-market-api/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Backend del marketplace universitario **Uni Market**: registro con confirmación de email, catálogo de anuncios con moderación previa, mensajería comprador–vendedor y panel de administración.
 
@@ -160,3 +162,7 @@ odd/tasks/                         registro de trabajo por feature (con evidenci
 openapi.yaml                       contrato de la API (validado en el build)
 compose.yaml + Dockerfile          entorno local: BD (+ API opcional) en contenedores
 ```
+
+## Licencia
+
+MIT — ver [`LICENSE`](LICENSE).
