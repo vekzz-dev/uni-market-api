@@ -3,8 +3,9 @@
 | Campo | Valor |
 |---|---|
 | Estado | **Verificado (2026-10-12)** |
-| HEAD | `mvn clean verify` EXIT=0 · **183 tests, 0 fallos** · cobertura de líneas **90.7 %** (gate ≥ 80 % activo) |
+| HEAD | `mvn clean verify` EXIT=0 · **190 tests, 0 fallos** · cobertura de líneas **91.5 %** (gate ≥ 80 % activo) |
 | Alcance | Los 17 criterios de aceptación del PRD §8, cada uno mapeado a su evidencia real en la suite |
+| Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, y CORS configurable por entorno (+3 tests). Ninguna regla del PRD cambió: los 17 criterios siguen verificados |
 
 ## Resultado por criterio
 

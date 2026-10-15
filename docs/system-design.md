@@ -209,7 +209,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Tokens persistidos | Siempre SHA-256 del valor crudo; consumo transaccional con `fecha_uso` (R11) |
 | No-enumeración | Reset: mismo status/cuerpo siempre; login: `401` genérico único; detalle de anuncio no visible: `404` (R4, R13) |
 | Rate limiting | Filtro de límite por IP+email en el reset (obligatorio, R13) y en login/registro (recomendado — resuelve Q1 como decisión por defecto, revocable por configuración) |
-|Cabeceras y CORS | Orígenes de web/móvil por configuración; cabeceras de seguridad por defecto de Spring Security; sin HTML renderizado (los clientes no confían en contenido de usuario) |
+|Cabeceras y CORS | CORS configurable por entorno (`app.seguridad.cors.origenes-permitidos` / `CORS_ORIGENES`): dev abre `localhost:*`, prod va vacío salvo configuración explícita; preflight manejado por Spring Security con `Location` expuesto para los 201; cabeceras de seguridad por defecto de Spring Security; sin HTML renderizado (los clientes no confían en contenido de usuario) |
 
 ## 9. Calidad y pruebas
 
@@ -232,7 +232,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 | Tema | Decisión |
 |---|---|
-| Configuración | Externalizada (perfiles Spring **dev/prod** — prod es fail-fast con guarda de credenciales: JWT, R2 y Resend obligatorios): DSN de BD, secreto JWT, límite de tasa (`RATE_LIMIT_INTENTOS`), API key de Resend, storage (`MEDIA_PROVEEDOR` + `MEDIA_DIR` en dev / credenciales R2 en prod, D14/N8), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
+| Configuración | Externalizada (perfiles Spring **dev/prod** — prod es fail-fast con guarda de credenciales: JWT, R2 y Resend obligatorios): DSN de BD, secreto JWT, límite de tasa (`RATE_LIMIT_INTENTOS`), orígenes CORS (`CORS_ORIGENES`), API key de Resend, storage (`MEDIA_PROVEEDOR` + `MEDIA_DIR` en dev / credenciales R2 en prod, D14/N8), TTL del access token (el refresh es la constante de 30 días de R12), límites de imagen — una sola fuente de configuración de límites (R8) |
 | Respaldo | Backup diario automatizado de PostgreSQL con retención de 7 días (Q4, 2026-10-10) |
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
