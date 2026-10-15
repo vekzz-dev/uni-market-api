@@ -5,7 +5,7 @@
 | Estado | **Verificado (2026-10-12)** |
 | HEAD | `mvn clean verify` EXIT=0 · **193 tests, 0 fallos** · cobertura de líneas **91.6 %** (gate ≥ 80 % activo) |
 | Alcance | Los 17 criterios de aceptación del PRD §8, cada uno mapeado a su evidencia real en la suite |
-| Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, CORS configurable por entorno y **traceId de correlación** (`X-Request-Id`) en cada log. Ninguna regla del PRD cambió: los 17 criterios siguen verificados |
+| Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, CORS configurable por entorno, **traceId de correlación** (`X-Request-Id`) en cada log, BD de desarrollo en variante **alpine** (PG18) con migración collation-safe (dump → initdb musl → restore) y **runner de CI fijado** a `ubuntu-24.04`. Ninguna regla del PRD cambió: los 17 criterios siguen verificados |
 
 ## Resultado por criterio
 

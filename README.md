@@ -1,5 +1,7 @@
 # Uni Market — API
 
+[![CI](https://github.com/vekzz-dev/uni-market-api/actions/workflows/ci.yml/badge.svg)](https://github.com/vekzz-dev/uni-market-api/actions/workflows/ci.yml)
+
 Backend del marketplace universitario **Uni Market**: registro con confirmación de email, catálogo de anuncios con moderación previa, mensajería comprador–vendedor y panel de administración.
 
 - **Stack**: Java 21 · Spring Boot 4.1 · Spring MVC · Spring Security (JWT HS256 + refresh rotativo) · PostgreSQL 18 · Flyway · Maven.
@@ -101,7 +103,7 @@ El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en In
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**171 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**193 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 

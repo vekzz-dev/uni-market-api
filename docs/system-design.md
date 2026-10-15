@@ -238,7 +238,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | Emails | Evento transaccional `@TransactionalEventListener(AFTER_COMMIT)` + cola en memoria con backoff y máximo de intentos; un fallo del proveedor nunca revierte el flujo HTTP (PRD §5). El log de entrega son logs estructurados de aplicación con `traceId` — sin tabla de auditoría (N2 resuelta, 2026-10-10). Proveedor: Resend vía API HTTP (prod); adaptador de log a consola en dev (D12) |
 | Compensación de storage | Subida de imágenes antes del commit; borrado de objetos huérfanos en rollback de la transacción de creación |
 | Observabilidad | Logs con **traceId de correlación**: `X-Request-Id` entrante (saneado con allow-list) o UUID generado, publicado en MDC y presente en cada línea vía `logback-spring.xml`; devuelto en la respuesta para reporte accionable. Métricas básicas de arranque de Spring; el log shipping a un colector (JSON) es decisión de despliegue. SLO diferidos a pre-producción con latencias medidas (Q2 resuelta, 2026-10-10) |
-| CI | Maven: build + tests + validación del contrato (guardas Java en tests); gate de cobertura de dominio (sin path filters, un solo repositorio) |
+| CI | Maven: build + tests + validación del contrato (guardas Java en tests); **runner fijado `ubuntu-24.04`** (reproducibilidad sobre `latest`; `ubuntu-slim` descartado: sin Docker-in-Docker, incompatible con Testcontainers); gate de cobertura de dominio (sin path filters, un solo repositorio) |
 
 ## 11. Decisiones técnicas y trade-offs (resumen ADR)
 
