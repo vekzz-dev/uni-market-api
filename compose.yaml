@@ -9,7 +9,12 @@
 # =============================================================================
 services:
   postgres:
-    image: postgres:18
+    # Calificada completa: podman no resuelve nombres cortos sin TTY (misma lección
+    # que el Dockerfile). Variante alpine (oficial del proyecto Postgres): mismo major 18
+    # y mismo layout de PGDATA (volumen en /var/lib/postgresql), ~35% menos de disco y
+    # arranque más rápido. La imagen de PRODUCCIÓN de la API sí queda en temurin glibc
+    # (decisión de reproducibilidad: musl no aporta aquí y añade superficie).
+    image: docker.io/library/postgres:18-alpine
     container_name: unimarket-pg
     environment:
       POSTGRES_USER: unimarket
