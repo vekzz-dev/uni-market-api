@@ -12,7 +12,10 @@ permissions:
 jobs:
   build:
     name: Build and verify
-    runs-on: ubuntu-latest
+    # Pin del runner (no `ubuntu-latest`): reproducibilidad del build — el flip de
+    # `latest` a una versión mayor futura no debe romper el CI sin aviso.
+    # `ubuntu-slim` NO sirve aquí: es contenedor 1 vCPU sin Docker-in-Docker (Testcontainers).
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
