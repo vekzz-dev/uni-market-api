@@ -275,6 +275,7 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 | N6 | **Resuelto (2026-10-12)**: `PUT /anuncios/{id}/imagenes` (multipart 1..5) reemplaza el set completo, borra las viejas solo post-commit (R8) y resetea la revisión (R6) — implementado con tests de integración y de compensación | — | — |
 | N7 | Búsqueda con acentos: no-objetivo explícito registrado en el PRD §7 (decisión 2026-10-12) | — | — |
 | N8 | **Resuelto (2026-10-12)**: adaptador `AlmacenR2` implementado (SDK v2 de AWS, activo tras `app.media.proveedor=r2` con credenciales por entorno) con unit tests contra cliente mockeado; el puerto `AlmacenObjetos` ganó `rutaDesdeUrl` de instancia para soportar URLs de R2. Verificación contra R2 real es de despliegue | Menor | Al desplegar: validar subida/lectura pública reales contra R2 |
+| N9 | **Descartado conscientemente (2026-10-14)**: bootstrap del primer admin por variable de entorno (`ADMIN_BOOTSTRAP_EMAIL`). Se mantiene el flujo documentado: el primer admin se establece con SQL explícito (README) y el panel nunca siembra credenciales por defecto | — | — |
 
 ## 13. Documentos relacionados
 
