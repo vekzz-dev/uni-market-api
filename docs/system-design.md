@@ -9,9 +9,9 @@ Documento autónomo para la implementación técnica del backend. Define el *có
 | Fecha | 2026-10-10 |
 | Versión | 1.0 |
 | Alcance | Solo este repositorio backend. Web y móvil viven en repos propios (fuera de alcance). |
-| Documentos relacionados | `prd.md` (PRD: problema, reglas R1–R15, criterios de aceptación), `database-design.md` (DBDD: esquema, índices, migraciones) |
+| Documentos relacionados | `prd.md` (PRD: problema, reglas R1–R16, criterios de aceptación), `database-design.md` (DBDD: esquema, índices, migraciones) |
 
-> **Cómo leer este SDD**: no repite reglas de negocio ni esquema de datos. Referencia al PRD por su identificador (`R1`…`R15`) y al DBDD por su sección. Lo que aquí se marca como **Decisión** es una decisión técnica adoptada; lo marcado como **Pendiente** requiere definición antes de implementar lo que depende de ella.
+> **Cómo leer este SDD**: no repite reglas de negocio ni esquema de datos. Referencia al PRD por su identificador (`R1`…`R16`) y al DBDD por su sección. Lo que aquí se marca como **Decisión** es una decisión técnica adoptada; lo marcado como **Pendiente** requiere definición antes de implementar lo que depende de ella.
 
 ---
 
@@ -148,7 +148,7 @@ Logout: revoca por `hash_token` de forma idempotente → siempre `204`.
 
 ## 6. Interfaces y contrato
 
-El detalle completo de rutas, cuerpos y códigos vive en el OpenAPI (siguiente entregable). Aquí solo las decisiones estructurales:
+El detalle completo de rutas, cuerpos y códigos vive en `openapi.yaml` (raíz del repo, fuente de verdad validada en el build). Aquí solo las decisiones estructurales:
 
 **Mapa de recursos** (naming plural en kebab-case, wire `camelCase`):
 
@@ -278,6 +278,6 @@ Cada guard de autorización tiene al menos un caso permitido y uno denegado (cri
 
 ## 13. Documentos relacionados
 
-- `prd.md` — PRD: reglas R1–R15, criterios de aceptación, preguntas Q1–Q5.
+- `prd.md` — PRD: reglas R1–R16, criterios de aceptación, preguntas Q1–Q5 (todas resueltas).
 - `database-design.md` — DBDD: esquema, índices, CHECKs, migraciones.
-- *Pendiente*: `openapi.yaml` — contrato `/v1` como fuente de verdad para el cliente generado (siguiente entregable).
+- `openapi.yaml` — contrato `/v1` como fuente de verdad del wire (validado por tests en el build; los clientes web/móvil generan su código desde él en repos propios).
