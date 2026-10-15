@@ -211,6 +211,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | No-enumeración | Reset: mismo status/cuerpo siempre; login: `401` genérico único; detalle de anuncio no visible: `404` (R4, R13) |
 | Rate limiting | Filtro de límite por IP+email en el reset (obligatorio, R13) y en login/registro (recomendado — resuelve Q1 como decisión por defecto, revocable por configuración) |
 |Cabeceras y CORS | CORS configurable por entorno (`app.seguridad.cors.origenes-permitidos` / `CORS_ORIGENES`): dev abre `localhost:*`, prod va vacío salvo configuración explícita; preflight manejado por Spring Security con `Location` expuesto para los 201; cabeceras de seguridad por defecto de Spring Security; sin HTML renderizado (los clientes no confían en contenido de usuario) |
+|CSRF | Deshabilitado **por diseño**: API stateless que autentica con Bearer tokens en el header (sin cookies de sesión) — el vector CSRF no existe; configuración documentada por Spring para resource servers JWT. Auditado con CodeQL (2026-10-15) y descartado como falso positivo con esa justificación |
 
 ## 9. Calidad y pruebas
 
