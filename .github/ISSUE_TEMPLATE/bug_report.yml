@@ -1,0 +1,101 @@
+name: Reporte de bug
+description: Algo de la API no responde como esperabas
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de continuar, revisa el comportamiento esperado en
+        [`openapi.yaml`](https://github.com/vekzz-dev/uni-market-api/blob/main/openapi.yaml)
+        y en el PRD ([`docs/prd.md`](https://github.com/vekzz-dev/uni-market-api/blob/main/docs/prd.md)).
+        Si el contrato dice otra cosa que la API, también es un bug.
+
+  - type: textarea
+    id: resumen
+    attributes:
+      label: Resumen
+      description: Qué falla, en una o dos frases.
+      placeholder: "GET /v1/listings devuelve 500 cuando el catálogo está vacío"
+    validations:
+      required: true
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint afectado
+      description: Método y ruta con versión, tal como aparece en el contrato.
+      placeholder: "GET /v1/listings/{id}"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      description: Incluye payload, cabeceras y comando completo cuando aplique.
+      placeholder: |
+        1. Levanta la API con `mvn spring-boot:run`
+        2. `curl -X POST localhost:8080/v1/auth/register -d '{...}'`
+        3. ...
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
+      description: Qué debería ocurrir según el contrato o la regla del PRD que aplica.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamiento actual
+      description: Qué ocurre realmente. Pega el código de estado y el cuerpo de la respuesta.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs o traza
+      description: Salida del servidor en el momento del fallo. Verifica que no queden secretos, tokens ni credenciales reales.
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: entorno
+    attributes:
+      label: Cómo ejecutaste la API
+      options:
+        - IntelliJ
+        - Terminal (`mvn spring-boot:run`)
+        - Contenedor (compose)
+        - Pruebas (`mvn verify`)
+        - Otro
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Java y sistema operativo
+      description: Salida de `java -version` y tu sistema operativo.
+      placeholder: "JDK 21.0.5 · Fedora 42"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmaciones
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: Busqué en los issues existentes y no hay uno igual.
+          required: true
+        - label: Reproduje el fallo después de reiniciar la base de datos desde cero.
+          required: false

@@ -1,0 +1,57 @@
+name: Propuesta de mejora
+description: Idea para la API, el contrato o el modelo de datos
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Una propuesta que toca la API casi siempre implica algo más que código:
+        actualizar [`openapi.yaml`](https://github.com/vekzz-dev/uni-market-api/blob/main/openapi.yaml),
+        ajustar la regla correspondiente del PRD y, si aplica, añadir una migración de Flyway.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema o necesidad
+      description: Qué no se puede hacer hoy y a quién afecta (comprador, vendedor, administrador o clientes web/móvil).
+      placeholder: "Hoy no hay forma de que el vendedor pause un anuncio sin eliminarlo, así que ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucion
+    attributes:
+      label: Solución propuesta
+      description: Cómo lo resolverías. Si cambia el contrato, indica método, ruta y forma de la respuesta.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+      description: Otras opciones que descartaste y por qué.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: alcance
+    attributes:
+      label: Alcance previsto
+      description: Marca todo lo que la propuesta obliga a tocar.
+      options:
+        - label: Contrato `openapi.yaml` (los clientes regeneran su código)
+        - label: Regla de negocio del PRD (R1–R16)
+        - label: Esquema de base de datos y migración Flyway
+        - label: Seguridad, permisos o roles
+        - label: Rendimiento o consultas
+        - label: Solo documentación
+
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto en clientes existentes
+      description: Indica si rompe la compatibilidad de `/v1` o si es un cambio aditivo.
+    validations:
+      required: true

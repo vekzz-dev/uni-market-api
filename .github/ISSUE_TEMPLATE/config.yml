@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentación del proyecto
+    url: https://github.com/vekzz-dev/uni-market-api/blob/main/README.md
+    about: Requisitos, arranque local y comandos de verificación.
+  - name: Contrato OpenAPI
+    url: https://github.com/vekzz-dev/uni-market-api/blob/main/openapi.yaml
+    about: Fuente de verdad de la API `/v1` y de la forma de las respuestas.
