@@ -17,6 +17,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # 0 = historial y tags completos: las notas del release se derivan del rango
+          # entre el tag anterior y este con `git describe` y `git log`.
+          fetch-depth: 0
 
       - name: Set up JDK 21 (Temurin)
         uses: actions/setup-java@v6
@@ -55,8 +59,23 @@ jobs:
             exit 0
           fi
 
+          # Notas derivadas del historial: GitHub genera "What's Changed" solo desde pull
+          # requests, y este repo commitea directo a main, así que saldrían vacías.
+          prev="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+          if [ -n "$prev" ]; then
+            cambios="$(git log --reverse --no-merges --pretty='- %s (%h)' "${prev}..${tag}")"
+            enlace="**Cambios completos**: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${prev}...${tag}"
+          else
+            cambios="$(git log --reverse --no-merges --pretty='- %s (%h)' "${tag}")"
+            enlace=""
+          fi
+          cuerpo="$(printf '## Cambios\n%s' "$cambios")"
+          if [ -n "$enlace" ]; then
+            cuerpo="$(printf '%s\n\n%s' "$cuerpo" "$enlace")"
+          fi
+
           gh release create "$tag" \
             --title "$tag" \
-            --generate-notes \
+            --notes "$cuerpo" \
             --verify-tag \
             "$asset"
