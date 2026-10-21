@@ -1,0 +1,62 @@
+name: Release
+
+# El tag es el disparador: empujar un tag vX.Y.Z publica el release. Un solo camino,
+# sin botón manual que pueda dejar el tag y el release desincronizados.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish release
+    # Mismo runner que CI: `mvn verify` levanta Testcontainers con PostgreSQL 18.
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # El artefacto se construye desde el tag: el release no confía en un build anterior.
+      - name: Build and verify
+        run: mvn -B verify
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          asset="uni-market-api-${tag}.jar"
+
+          # El asset lleva la versión del tag en el nombre, no el 0.0.1-SNAPSHOT del pom.
+          cp target/api-*.jar "$asset"
+
+          # La existencia del release no prueba que el artefacto se haya subido: se
+          # comprueba el asset, no solo el tag, para no terminar en verde sin jar.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if gh release view "$tag" --json assets --jq '.assets[].name' | grep -qx "$asset"; then
+              echo "El release $tag ya existe con $asset; nada que hacer."
+              exit 0
+            fi
+            echo "El release $tag existe sin $asset; se completa."
+            gh release upload "$tag" "$asset" --clobber
+            if [ "$(gh release view "$tag" --json isDraft --jq '.isDraft')" = "true" ]; then
+              gh release edit "$tag" --draft=false
+            fi
+            exit 0
+          fi
+
+          gh release create "$tag" \
+            --title "$tag" \
+            --generate-notes \
+            --verify-tag \
+            "$asset"
