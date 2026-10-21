@@ -44,7 +44,7 @@ public class ControladorAnuncios {
 
     /** Catálogo público con cursor compuesto según el orden (R4, D4). */
     @GetMapping("/anuncios")
-    public ResponseEntity<RespuestaColeccion<DtosAnuncios.AnuncioPublico>> buscar(
+    public ResponseEntity<RespuestaColeccion<DtosAnuncios.AnuncioResumen>> buscar(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer categoriaId,
             @RequestParam(required = false) String cursor,
@@ -55,7 +55,7 @@ public class ControladorAnuncios {
 
     /** Detalle público: no visible o inexistente → 404 indistinguible (R4). */
     @GetMapping("/anuncios/{anuncioId}")
-    public ResponseEntity<DtosAnuncios.AnuncioPublico> detalle(@PathVariable UUID anuncioId) {
+    public ResponseEntity<DtosAnuncios.AnuncioDetalle> detalle(@PathVariable UUID anuncioId) {
         return ResponseEntity.ok(catalogo.detalle(anuncioId));
     }
 

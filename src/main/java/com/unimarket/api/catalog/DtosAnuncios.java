@@ -17,8 +17,42 @@ public final class DtosAnuncios {
     private DtosAnuncios() {
     }
 
-    /** Vista pública (resumen/detalle): solo {@code imagenUrls} viaja al wire (R8). */
-    public record AnuncioPublico(
+    /**
+     * Resumen público del catálogo (openapi: {@code AnuncioResumen}): solo {@code imagenUrls}
+     * viaja al wire (R8). NO incluye {@code estado} ni {@code fechaActualizacion}: el listado
+     * solo expone anuncios visibles, así que el estado sería una constante, y el ciclo de vida
+     * pertenece al detalle. Publicar campos de más hace que el cliente generado los descarte
+     * en silencio.
+     */
+    public record AnuncioResumen(
+            UUID id,
+            String nombre,
+            BigDecimal precio,
+            String descripcion,
+            Integer categoriaId,
+            List<String> imagenUrls,
+            UUID vendedorId,
+            Instant fechaCreacion) {
+
+        public static AnuncioResumen de(Anuncio anuncio) {
+            return new AnuncioResumen(
+                    anuncio.getId(),
+                    anuncio.getNombre(),
+                    anuncio.getPrecio(),
+                    anuncio.getDescripcion(),
+                    anuncio.getCategoriaId(),
+                    anuncio.getImagenesUrls(),
+                    anuncio.getVendedorId(),
+                    anuncio.getFechaCreacion());
+        }
+    }
+
+    /**
+     * Detalle público (openapi: {@code AnuncioDetalle} = {@code AnuncioResumen} + {@code estado}
+     * + {@code fechaActualizacion}). Es también la vista que consume mensajería: en una
+     * conversación importa si el anuncio ya se vendió, se ocultó o se dio de baja (R16).
+     */
+    public record AnuncioDetalle(
             UUID id,
             String nombre,
             BigDecimal precio,
@@ -30,8 +64,8 @@ public final class DtosAnuncios {
             EstadoAnuncio estado,
             Instant fechaActualizacion) {
 
-        public static AnuncioPublico de(Anuncio anuncio) {
-            return new AnuncioPublico(
+        public static AnuncioDetalle de(Anuncio anuncio) {
+            return new AnuncioDetalle(
                     anuncio.getId(),
                     anuncio.getNombre(),
                     anuncio.getPrecio(),

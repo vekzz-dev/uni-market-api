@@ -63,8 +63,8 @@ class ServicioConversacionesTest {
                 new CursorCodec(new ObjectMapper()));
     }
 
-    private DtosAnuncios.AnuncioPublico anuncioVisible(UUID vendedorId) {
-        return new DtosAnuncios.AnuncioPublico(UUID.randomUUID(), "Item", new BigDecimal("10.00"), null, null,
+    private DtosAnuncios.AnuncioDetalle anuncioVisible(UUID vendedorId) {
+        return new DtosAnuncios.AnuncioDetalle(UUID.randomUUID(), "Item", new BigDecimal("10.00"), null, null,
                 List.of(), vendedorId, Instant.now(), EstadoAnuncio.disponible, Instant.now());
     }
 

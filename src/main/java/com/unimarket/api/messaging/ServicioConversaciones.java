@@ -66,7 +66,7 @@ public class ServicioConversaciones {
      */
     @Transactional
     public Apertura abrir(UUID compradorId, UUID anuncioId) {
-        DtosAnuncios.AnuncioPublico anuncio = catalogo.detalle(anuncioId);
+        DtosAnuncios.AnuncioDetalle anuncio = catalogo.detalle(anuncioId);
         UUID vendedorId = anuncio.vendedorId();
         if (vendedorId.equals(compradorId)) {
             throw new ReglaDeNegocioException("No puedes abrir una conversación con tu propio anuncio.");
@@ -109,7 +109,7 @@ public class ServicioConversaciones {
                 conversacion.getVendedorId(),
                 conversacion.getFechaCreacion(),
                 conversacion.getFechaActualizacion(),
-                catalogo.resumenSinVisibilidad(conversacion.getAnuncioId()),
+                catalogo.detalleSinVisibilidad(conversacion.getAnuncioId()),
                 mensajes.countByConversacionIdAndLeidoFalseAndRemitenteIdNot(conversacionId, usuarioId));
     }
 
@@ -175,7 +175,7 @@ public class ServicioConversaciones {
                 conversacion.getVendedorId(),
                 conversacion.getFechaCreacion(),
                 conversacion.getFechaActualizacion(),
-                catalogo.resumenSinVisibilidad(conversacion.getAnuncioId()),
+                catalogo.detalleSinVisibilidad(conversacion.getAnuncioId()),
                 mensajes.findTopByConversacionIdOrderByFechaCreacionDescIdDesc(conversacion.getId())
                         .map(DtosMensajeria.UltimoMensaje::de)
                         .orElse(null),

@@ -42,7 +42,7 @@ public class ServicioCatalogo {
 
     /** Catálogo público: solo anuncios visibles, orden por fecha (desc) o precio (asc). */
     @Transactional(readOnly = true)
-    public RespuestaColeccion<DtosAnuncios.AnuncioPublico> buscar(
+    public RespuestaColeccion<DtosAnuncios.AnuncioResumen> buscar(
             String q, Integer categoriaId, String cursor, Integer limite, String orden) {
         int tamano = validarLimite(limite);
         boolean porPrecio = "precio".equals(orden);
@@ -90,29 +90,29 @@ public class ServicioCatalogo {
         }
 
         return new RespuestaColeccion<>(
-                visibles.stream().map(DtosAnuncios.AnuncioPublico::de).toList(),
+                visibles.stream().map(DtosAnuncios.AnuncioResumen::de).toList(),
                 new PaginacionCursor(cursorSiguiente));
     }
 
     /** Detalle público: no visible o inexistente → 404 indistinguible (R4). */
     @Transactional(readOnly = true)
-    public DtosAnuncios.AnuncioPublico detalle(UUID anuncioId) {
+    public DtosAnuncios.AnuncioDetalle detalle(UUID anuncioId) {
         Anuncio anuncio = anuncios
                 .findOne(EspecificacionesAnuncio.visible().and((raiz, consulta, cb) -> cb.equal(raiz.get("id"), anuncioId)))
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe o no es visible."));
-        return DtosAnuncios.AnuncioPublico.de(anuncio);
+        return DtosAnuncios.AnuncioDetalle.de(anuncio);
     }
 
     /**
-     * Resumen SIN filtro de visibilidad, para el historial de mensajería (R16): una
+     * Detalle SIN filtro de visibilidad, para el historial de mensajería (R16): una
      * conversación sigue legible aunque el anuncio después sea {@code vendido}, {@code inactivo}
      * o {@code eliminado} (el borrado es lógico, la fila siempre existe). Solo consumo interno
      * entre módulos — jamás se expone por una ruta pública.
      */
     @Transactional(readOnly = true)
-    public DtosAnuncios.AnuncioPublico resumenSinVisibilidad(UUID anuncioId) {
+    public DtosAnuncios.AnuncioDetalle detalleSinVisibilidad(UUID anuncioId) {
         return anuncios.findById(anuncioId)
-                .map(DtosAnuncios.AnuncioPublico::de)
+                .map(DtosAnuncios.AnuncioDetalle::de)
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
     }
 

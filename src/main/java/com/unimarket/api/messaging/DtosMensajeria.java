@@ -51,7 +51,7 @@ public final class DtosMensajeria {
             UUID vendedorId,
             Instant fechaCreacion,
             Instant fechaActualizacion,
-            DtosAnuncios.AnuncioPublico anuncio,
+            DtosAnuncios.AnuncioDetalle anuncio,
             UltimoMensaje ultimoMensaje,
             long noLeidos) {
     }
@@ -71,7 +71,7 @@ public final class DtosMensajeria {
             UUID vendedorId,
             Instant fechaCreacion,
             Instant fechaActualizacion,
-            DtosAnuncios.AnuncioPublico anuncio,
+            DtosAnuncios.AnuncioDetalle anuncio,
             long noLeidos) {
     }
 
