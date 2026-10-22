@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | **Verificado (2026-10-12)** |
-| HEAD | `mvn clean verify` EXIT=0 · **193 tests, 0 fallos** · cobertura de líneas **91.6 %** (gate ≥ 80 % activo) |
+| HEAD | `mvn verify` EXIT=0 · **214 tests, 0 fallos** · cobertura de líneas **91 %** (gate ≥ 80 % activo) |
 | Alcance | Los 17 criterios de aceptación del PRD §8, cada uno mapeado a su evidencia real en la suite |
 | Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, CORS configurable por entorno, **traceId de correlación** (`X-Request-Id`) en cada log, BD de desarrollo en variante **alpine** (PG18) con migración collation-safe (dump → initdb musl → restore) y **runner de CI fijado** a `ubuntu-24.04`. 2026-10-21: se agrega el criterio 18 (R17, nombre público del vendedor, issue #2); los 17 criterios previos siguen verificados sin cambios |
 
@@ -28,12 +28,12 @@
 | 15 | Web y móvil consumen EXCLUSIVAMENTE el cliente generado | ➖ N/A en este repo | Los clientes viven en repos externos (decisión de alcance, PRD §7); este repo garantiza la fuente de verdad y su validación en el build |
 | 16 | Sin políticas RLS ni triggers en la BD | ✅ | `AceptacionFinalIntegrationTest.sinRlsNiTriggers` (`pg_policies`=0, `pg_trigger` no internos=0) + `DbSchemaVerificationTest` |
 | 17 | Apertura solo sobre anuncio visible con vendedor activo; envío con contraparte activa; historial previo legible | ✅ | `MensajeriaFlujoIntegrationTest.apertura/participacionYEnvio/flujoCompleto` |
-| 18 | Cada anuncio publica el nombre público del vendedor (nombre de pila + inicial del último apellido, máx. 60) y nunca el nombre completo; sin nombre resoluble → `"Vendedor"` (R17) | ✅ | `NombresPublicosTest` (regla y límite 60), `ServicioNombresPublicosTest` (una consulta en lote, baja → genérico), `MapeadorAnunciosTest` (costura catálogo→identity) y `CatalogoFlujoIntegrationTest.nombrePublicoEnListadoYDetalle/vendedorDadoDeBaja` (catálogo y detalle HTTP reales) |
+| 18 | Cada anuncio publica el nombre público del vendedor (nombre de pila + inicial del último apellido, máx. 60) y nunca el nombre completo; sin nombre resoluble → `"Vendedor"` (R17) | ✅ | `NombresPublicosTest` (regla y límite 60), `ServicioNombresPublicosTest` (una consulta en lote, baja → genérico), `MapeadorAnunciosTest` (costura catálogo→identity), `CatalogoFlujoIntegrationTest.nombrePublicoEnListadoYDetalle/vendedorDadoDeBaja` (listado y detalle HTTP reales) y `NombrePublicoVendedorIntegrationTest` (wire exacto 9/11 campos + 1 consulta de usuarios por página medida con estadísticas de Hibernate) |
 
 ## Conclusión
 
 **17 de 18 criterios verificados con evidencia automatizada; 1 fuera de alcance de este repositorio por diseño (criterio 15)**. La entrega queda cerrada con:
 
-- `mvn clean verify` reproducible: 193 tests · 0 fallos · 91.6 % de líneas con el gate activo.
+- `mvn verify` reproducible: 214 tests · 0 fallos · 91 % de líneas con el gate activo.
 - Contrato OpenAPI validado en el build (estructura, `$ref`s y claves duplicadas).
 - Pendientes del SDD sin deudas abiertas: N3 y N8 resueltos; las notas restantes son decisiones conscientes (memoria del limiter en despliegue único; verificación real de R2 al desplegar).
