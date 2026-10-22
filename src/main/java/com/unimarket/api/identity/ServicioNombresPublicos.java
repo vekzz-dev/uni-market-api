@@ -23,6 +23,12 @@ import java.util.UUID;
 @Service
 public class ServicioNombresPublicos {
 
+    /**
+     * Genérico publicado cuando el nombre no es resoluble. Forma parte del contrato del
+     * módulo: los consumidores no necesitan (ni deben) importar la clase de regla.
+     */
+    public static final String SIN_NOMBRE = NombresPublicos.SIN_NOMBRE;
+
     private final UsuarioRepository usuarios;
 
     public ServicioNombresPublicos(UsuarioRepository usuarios) {
@@ -37,12 +43,12 @@ public class ServicioNombresPublicos {
     @Transactional(readOnly = true)
     public String nombrePublicoDe(UUID usuarioId) {
         if (usuarioId == null) {
-            return NombresPublicos.SIN_NOMBRE;
+            return SIN_NOMBRE;
         }
         return usuarios.findById(usuarioId)
                 .filter(Usuario::activa)
                 .map(usuario -> NombresPublicos.publico(usuario.getNombre()))
-                .orElse(NombresPublicos.SIN_NOMBRE);
+                .orElse(SIN_NOMBRE);
     }
 
     /**
@@ -61,7 +67,7 @@ public class ServicioNombresPublicos {
             return Map.of();
         }
         Map<UUID, String> nombres = new LinkedHashMap<>();
-        distintos.forEach(id -> nombres.put(id, NombresPublicos.SIN_NOMBRE));
+        distintos.forEach(id -> nombres.put(id, SIN_NOMBRE));
         usuarios.findAllById(distintos).stream()
                 .filter(Usuario::activa)
                 .forEach(usuario -> nombres.put(usuario.getId(), NombresPublicos.publico(usuario.getNombre())));

@@ -1,6 +1,5 @@
 package com.unimarket.api.catalog;
 
-import com.unimarket.api.identity.NombresPublicos;
 import com.unimarket.api.identity.ServicioNombresPublicos;
 import org.springframework.stereotype.Component;
 
@@ -52,6 +51,6 @@ class MapeadorAnuncios {
 
     /** El servicio garantiza una entrada por vendedor; el fallback evita un nulo en el wire. */
     private static String nombre(Map<UUID, String> porVendedor, Anuncio anuncio) {
-        return porVendedor.getOrDefault(anuncio.getVendedorId(), NombresPublicos.SIN_NOMBRE);
+        return porVendedor.getOrDefault(anuncio.getVendedorId(), ServicioNombresPublicos.SIN_NOMBRE);
     }
 }
