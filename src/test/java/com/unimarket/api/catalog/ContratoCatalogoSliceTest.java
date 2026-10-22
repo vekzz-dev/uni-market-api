@@ -69,10 +69,10 @@ class ContratoCatalogoSliceTest {
     void listadoYDetalleRespetanLosEsquemasDelContrato() throws Exception {
         DtosAnuncios.AnuncioResumen resumen = new DtosAnuncios.AnuncioResumen(
                 ANUNCIO_ID, "Calculadora", new BigDecimal("45.00"), "descripción", null,
-                List.of(), VENDEDOR_ID, INSTANTE);
+                List.of(), VENDEDOR_ID, "Ana P.", INSTANTE);
         DtosAnuncios.AnuncioDetalle detalle = new DtosAnuncios.AnuncioDetalle(
                 ANUNCIO_ID, "Calculadora", new BigDecimal("45.00"), "descripción", null,
-                List.of(), VENDEDOR_ID, INSTANTE, EstadoAnuncio.disponible, INSTANTE);
+                List.of(), VENDEDOR_ID, "Ana P.", INSTANTE, EstadoAnuncio.disponible, INSTANTE);
         when(catalogo.buscar(any(), any(), any(), any(), any()))
                 .thenReturn(new RespuestaColeccion<>(List.of(resumen), new PaginacionCursor(null)));
         when(catalogo.detalle(any())).thenReturn(detalle);
@@ -80,20 +80,23 @@ class ContratoCatalogoSliceTest {
         JsonNode listado = json.readTree(cuerpoDe("/v1/anuncios")).get("datos").get(0);
 
         assertThat(listado.size())
-                .as("AnuncioResumen declara 8 campos y el listado no puede publicar más")
-                .isEqualTo(8);
+                .as("AnuncioResumen declara 9 campos y el listado no puede publicar más")
+                .isEqualTo(9);
         assertThat(listado.has("estado"))
                 .as("estado no pertenece al resumen: el catálogo solo expone anuncios visibles")
                 .isFalse();
         assertThat(listado.has("fechaActualizacion"))
                 .as("fechaActualizacion no pertenece al resumen")
                 .isFalse();
+        assertThat(listado.get("vendedorNombre").asText())
+                .as("R17: el listado publica el nombre público que resuelve identity")
+                .isEqualTo("Ana P.");
 
         JsonNode cuerpoDetalle = json.readTree(cuerpoDe("/v1/anuncios/" + ANUNCIO_ID));
 
         assertThat(cuerpoDetalle.size())
                 .as("AnuncioDetalle = AnuncioResumen + estado + fechaActualizacion")
-                .isEqualTo(10);
+                .isEqualTo(11);
         assertThat(cuerpoDetalle.get("estado").asText()).isEqualTo("disponible");
         assertThat(cuerpoDetalle.has("fechaActualizacion")).isTrue();
     }

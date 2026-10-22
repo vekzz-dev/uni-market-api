@@ -35,11 +35,14 @@ public class ServicioAnuncios {
     private final AnuncioRepository anuncios;
     private final AlmacenObjetos almacen;
     private final PropiedadesMedia medios;
+    private final MapeadorAnuncios mapeador;
 
-    public ServicioAnuncios(AnuncioRepository anuncios, AlmacenObjetos almacen, PropiedadesMedia medios) {
+    public ServicioAnuncios(
+            AnuncioRepository anuncios, AlmacenObjetos almacen, PropiedadesMedia medios, MapeadorAnuncios mapeador) {
         this.anuncios = anuncios;
         this.almacen = almacen;
         this.medios = medios;
+        this.mapeador = mapeador;
     }
 
     /** Crea un anuncio SIEMPRE {@code pendiente} (R5) con hasta 5 imágenes validadas por contenido (R8). */
@@ -71,7 +74,7 @@ public class ServicioAnuncios {
             anuncio.setCategoriaId(categoriaId);
             anuncio.setImagenesUrls(new ArrayList<>(urls));
             anuncio.setImagenesPaths(new ArrayList<>(rutas));
-            return DtosAnuncios.AnuncioPanel.de(anuncios.saveAndFlush(anuncio));
+            return mapeador.panel(anuncios.saveAndFlush(anuncio));
         } catch (RuntimeException fallo) {
             rutas.forEach(almacen::eliminar);
             throw fallo;
@@ -104,7 +107,7 @@ public class ServicioAnuncios {
             anuncio.setEstadoRevision(EstadoRevision.pendiente);
             anuncio.limpiarTrailRevision();
         }
-        return DtosAnuncios.AnuncioPanel.de(anuncios.saveAndFlush(anuncio));
+        return mapeador.panel(anuncios.saveAndFlush(anuncio));
     }
 
     /** Alterna {@code disponible↔inactivo}; solo sobre revisión aprobada (PRD §5). */
@@ -118,7 +121,7 @@ public class ServicioAnuncios {
             throw new ReglaDeNegocioException("El estado actual del anuncio no permite cambiar su visibilidad.");
         }
         anuncio.setEstado(visible ? EstadoAnuncio.disponible : EstadoAnuncio.inactivo);
-        return DtosAnuncios.AnuncioPanel.de(anuncios.saveAndFlush(anuncio));
+        return mapeador.panel(anuncios.saveAndFlush(anuncio));
     }
 
     /** Marca vendido desde {@code disponible|inactivo}. */
@@ -129,7 +132,7 @@ public class ServicioAnuncios {
             throw new ReglaDeNegocioException("El estado actual del anuncio no permite marcarlo vendido.");
         }
         anuncio.setEstado(EstadoAnuncio.vendido);
-        return DtosAnuncios.AnuncioPanel.de(anuncios.saveAndFlush(anuncio));
+        return mapeador.panel(anuncios.saveAndFlush(anuncio));
     }
 
     /** Baja lógica (R1): conserva conversaciones y objetos de imagen; no hay borrado físico. */
@@ -168,7 +171,7 @@ public class ServicioAnuncios {
             }
             Anuncio guardado = anuncios.saveAndFlush(anuncio);
             borrarTrasCommit(rutasViejas);
-            return DtosAnuncios.AnuncioPanel.de(guardado);
+            return mapeador.panel(guardado);
         } catch (RuntimeException fallo) {
             rutasNuevas.forEach(almacen::eliminar);
             throw fallo;

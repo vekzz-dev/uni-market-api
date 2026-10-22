@@ -1391,7 +1391,7 @@ components:
       description: "Rango `0 ≤ precio ≤ 99999999.99` (R8); fuera de rango → 422."
     AnuncioResumen:
       type: object
-      required: [id, nombre, precio, vendedorId, fechaCreacion]
+      required: [id, nombre, precio, vendedorId, vendedorNombre, fechaCreacion]
       properties:
         id:
           $ref: '#/components/schemas/UUID'
@@ -1414,6 +1414,14 @@ components:
           description: Solo URLs públicas, pareadas por posición con las claves internas (que jamás viajan, R8).
         vendedorId:
           $ref: '#/components/schemas/UUID'
+        vendedorNombre:
+          type: string
+          maxLength: 60
+          description: |
+            Nombre público del vendedor (R17): nombre de pila + inicial del último
+            apellido (`"Ana P."`). Nunca el nombre completo; cuando no es resoluble
+            (cuenta dada de baja o inexistente) publica `"Vendedor"` sin revelar estado.
+            Aditivo: los clientes anteriores lo ignoran.
         fechaCreacion:
           $ref: '#/components/schemas/FechaHora'
     AnuncioDetalle:

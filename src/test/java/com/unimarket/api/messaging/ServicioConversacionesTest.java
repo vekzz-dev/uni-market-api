@@ -65,7 +65,7 @@ class ServicioConversacionesTest {
 
     private DtosAnuncios.AnuncioDetalle anuncioVisible(UUID vendedorId) {
         return new DtosAnuncios.AnuncioDetalle(UUID.randomUUID(), "Item", new BigDecimal("10.00"), null, null,
-                List.of(), vendedorId, Instant.now(), EstadoAnuncio.disponible, Instant.now());
+                List.of(), vendedorId, "Ana P.", Instant.now(), EstadoAnuncio.disponible, Instant.now());
     }
 
     private void vendedorActivo(UUID vendedorId, boolean activo) {

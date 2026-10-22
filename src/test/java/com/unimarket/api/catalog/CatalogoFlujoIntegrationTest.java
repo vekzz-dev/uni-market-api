@@ -58,11 +58,16 @@ class CatalogoFlujoIntegrationTest extends SoportePostgresIT {
 
     /** Usuario confirmado y con sesión: alta por SQL (constructor protegido fuera del paquete). */
     private SesionDePrueba usuarioConSesion(String etiqueta) {
+        return usuarioConSesion(etiqueta, "Usuario " + etiqueta);
+    }
+
+    /** Variante con nombre controlado, para las reglas que dependen de él (R17). */
+    private SesionDePrueba usuarioConSesion(String etiqueta, String nombre) {
         String email = etiqueta.toLowerCase() + "-" + UUID.randomUUID() + "@uni.edu";
         UUID id = jdbc.queryForObject(
                 "INSERT INTO usuarios (email, nombre, hash_contrasena, fecha_verificacion_email) "
                         + "VALUES (?, ?, ?, now()) RETURNING id",
-                UUID.class, email, "Usuario " + etiqueta, encoder.encode("secreta123"));
+                UUID.class, email, nombre, encoder.encode("secreta123"));
         ResponseEntity<String> login = rest.postForEntity(
                 "/v1/auth/login", new HttpEntity<>(java.util.Map.of("email", email, "contrasena", "secreta123"), jsonHeaders()), String.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -370,6 +375,52 @@ class CatalogoFlujoIntegrationTest extends SoportePostgresIT {
             assertThat(cuerpo.get("datos").size()).isGreaterThanOrEqualTo(2);
             assertThat(cuerpo.get("paginacion").get("total").asLong()).isGreaterThanOrEqualTo(2);
             assertThat(cuerpo.get("datos").get(0).has("estadoRevision")).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Nombre público del vendedor (R17)")
+    class NombreDelVendedor {
+
+        @Test
+        @DisplayName("Catálogo y detalle publican nombre de pila + inicial del apellido, nunca el nombre completo")
+        void nombrePublicoEnListadoYDetalle() {
+            SesionDePrueba ana = usuarioConSesion("vendedora-ana", "Ana María Pérez Gómez");
+            SesionDePrueba luis = usuarioConSesion("vendedor-luis", "Luis Gómez");
+            String etiqueta = "R17 " + UUID.randomUUID();
+            UUID deAna = UUID.fromString(json.readTree(
+                    crearAnuncio(ana.token(), etiqueta + " A", "10", JPEG).getBody()).get("id").asText());
+            UUID deLuis = UUID.fromString(json.readTree(
+                    crearAnuncio(luis.token(), etiqueta + " B", "20", JPEG).getBody()).get("id").asText());
+            aprobar(deAna, luis.id());
+            aprobar(deLuis, ana.id());
+
+            JsonNode pagina = json.readTree(rest.getForEntity(
+                    "/v1/anuncios?q=" + etiqueta, String.class).getBody());
+            JsonNode detalleAna = json.readTree(rest.getForEntity("/v1/anuncios/" + deAna, String.class).getBody());
+
+            assertThat(pagina.get("datos")).hasSize(2);
+            assertThat(pagina.get("datos").get(0).get("vendedorNombre").asText()).isIn("Ana G.", "Luis G.");
+            assertThat(pagina.get("datos").get(1).get("vendedorNombre").asText()).isIn("Ana G.", "Luis G.");
+            assertThat(detalleAna.get("vendedorNombre").asText()).isEqualTo("Ana G.");
+            assertThat(rest.getForEntity("/v1/anuncios/" + deAna, String.class).getBody())
+                    .doesNotContain("Pérez")
+                    .doesNotContain("María");
+        }
+
+        @Test
+        @DisplayName("Vendedor dado de baja → genérico \"Vendedor\" sin revelar el estado de la cuenta (R1/R15)")
+        void vendedorDadoDeBaja() {
+            SesionDePrueba vendedor = usuarioConSesion("vendedor-baja", "Ana Pérez");
+            String nombre = "R17 baja " + UUID.randomUUID();
+            UUID anuncioId = UUID.fromString(json.readTree(
+                    crearAnuncio(vendedor.token(), nombre, "10", JPEG).getBody()).get("id").asText());
+            aprobar(anuncioId, vendedor.id());
+            jdbc.update("UPDATE usuarios SET fecha_eliminacion = now() WHERE id = ?", vendedor.id());
+
+            JsonNode detalle = json.readTree(rest.getForEntity("/v1/anuncios/" + anuncioId, String.class).getBody());
+
+            assertThat(detalle.get("vendedorNombre").asText()).isEqualTo("Vendedor");
         }
     }
 }

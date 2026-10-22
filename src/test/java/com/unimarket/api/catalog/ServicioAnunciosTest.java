@@ -49,6 +49,9 @@ class ServicioAnunciosTest {
     @Mock
     private AlmacenObjetos almacen;
 
+    @Mock
+    private com.unimarket.api.identity.ServicioNombresPublicos nombres;
+
     private PropiedadesMedia medios;
     private ServicioAnuncios servicio;
 
@@ -57,7 +60,8 @@ class ServicioAnunciosTest {
         medios = new PropiedadesMedia(
                 "/tmp/uni-market-test", "filesystem", 2097152, List.of("image/jpeg", "image/png", "image/gif", "image/webp"),
                 5, 5242880, List.of("image/jpeg", "image/png", "image/gif", "image/webp"), null);
-        servicio = new ServicioAnuncios(repositorio, almacen, medios);
+        when(nombres.nombrePublicoDe(any())).thenReturn("Ana P.");
+        servicio = new ServicioAnuncios(repositorio, almacen, medios, new MapeadorAnuncios(nombres));
     }
 
     private static MultipartFile imagenJpeg() {

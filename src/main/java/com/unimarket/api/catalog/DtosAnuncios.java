@@ -23,6 +23,9 @@ public final class DtosAnuncios {
      * solo expone anuncios visibles, así que el estado sería una constante, y el ciclo de vida
      * pertenece al detalle. Publicar campos de más hace que el cliente generado los descarte
      * en silencio.
+     *
+     * <p>{@code vendedorNombre} es el nombre público (R17): nombre de pila + inicial del
+     * último apellido, resuelto por {@code identity}. El nombre completo nunca viaja.
      */
     public record AnuncioResumen(
             UUID id,
@@ -32,9 +35,10 @@ public final class DtosAnuncios {
             Integer categoriaId,
             List<String> imagenUrls,
             UUID vendedorId,
+            String vendedorNombre,
             Instant fechaCreacion) {
 
-        public static AnuncioResumen de(Anuncio anuncio) {
+        public static AnuncioResumen de(Anuncio anuncio, String vendedorNombre) {
             return new AnuncioResumen(
                     anuncio.getId(),
                     anuncio.getNombre(),
@@ -43,6 +47,7 @@ public final class DtosAnuncios {
                     anuncio.getCategoriaId(),
                     anuncio.getImagenesUrls(),
                     anuncio.getVendedorId(),
+                    vendedorNombre,
                     anuncio.getFechaCreacion());
         }
     }
@@ -60,11 +65,12 @@ public final class DtosAnuncios {
             Integer categoriaId,
             List<String> imagenUrls,
             UUID vendedorId,
+            String vendedorNombre,
             Instant fechaCreacion,
             EstadoAnuncio estado,
             Instant fechaActualizacion) {
 
-        public static AnuncioDetalle de(Anuncio anuncio) {
+        public static AnuncioDetalle de(Anuncio anuncio, String vendedorNombre) {
             return new AnuncioDetalle(
                     anuncio.getId(),
                     anuncio.getNombre(),
@@ -73,6 +79,7 @@ public final class DtosAnuncios {
                     anuncio.getCategoriaId(),
                     anuncio.getImagenesUrls(),
                     anuncio.getVendedorId(),
+                    vendedorNombre,
                     anuncio.getFechaCreacion(),
                     anuncio.getEstado(),
                     anuncio.getFechaActualizacion());
@@ -88,6 +95,7 @@ public final class DtosAnuncios {
             Integer categoriaId,
             List<String> imagenUrls,
             UUID vendedorId,
+            String vendedorNombre,
             Instant fechaCreacion,
             EstadoAnuncio estado,
             Instant fechaActualizacion,
@@ -95,7 +103,7 @@ public final class DtosAnuncios {
             String motivoRechazo,
             Instant fechaRevision) {
 
-        public static AnuncioPanel de(Anuncio anuncio) {
+        public static AnuncioPanel de(Anuncio anuncio, String vendedorNombre) {
             return new AnuncioPanel(
                     anuncio.getId(),
                     anuncio.getNombre(),
@@ -104,6 +112,7 @@ public final class DtosAnuncios {
                     anuncio.getCategoriaId(),
                     anuncio.getImagenesUrls(),
                     anuncio.getVendedorId(),
+                    vendedorNombre,
                     anuncio.getFechaCreacion(),
                     anuncio.getEstado(),
                     anuncio.getFechaActualizacion(),

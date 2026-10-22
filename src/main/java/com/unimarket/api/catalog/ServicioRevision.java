@@ -33,9 +33,11 @@ public class ServicioRevision {
     static final int LIMITE_MAXIMO = 100;
 
     private final AnuncioRepository anuncios;
+    private final MapeadorAnuncios mapeador;
 
-    public ServicioRevision(AnuncioRepository anuncios) {
+    public ServicioRevision(AnuncioRepository anuncios, MapeadorAnuncios mapeador) {
         this.anuncios = anuncios;
+        this.mapeador = mapeador;
     }
 
     /**
@@ -72,7 +74,7 @@ public class ServicioRevision {
         }
         anuncio.setRevisadoPor(revisorId);
         anuncio.setFechaRevision(Instant.now());
-        return DtosAnuncios.AnuncioPanel.de(anuncios.saveAndFlush(anuncio));
+        return mapeador.panel(anuncios.saveAndFlush(anuncio));
     }
 
     /** Cola por estado de revisión: FIFO estable por {@code (fechaCreacion, id)} + offset. */
@@ -85,7 +87,7 @@ public class ServicioRevision {
         Page<Anuncio> resultado = anuncios.findAll(spec,
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.asc("fechaCreacion"), Sort.Order.asc("id"))));
         return new RespuestaColeccion<>(
-                resultado.getContent().stream().map(DtosAnuncios.AnuncioPanel::de).toList(),
+                mapeador.paneles(resultado.getContent()),
                 new PaginacionOffset(indice, tamano, resultado.getTotalElements(), resultado.getTotalPages()));
     }
 

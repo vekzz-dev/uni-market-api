@@ -33,11 +33,14 @@ public class ServicioCatalogo {
     private final AnuncioRepository anuncios;
     private final JdbcTemplate jdbc;
     private final CursorCodec cursorCodec;
+    private final MapeadorAnuncios mapeador;
 
-    public ServicioCatalogo(AnuncioRepository anuncios, JdbcTemplate jdbc, CursorCodec cursorCodec) {
+    public ServicioCatalogo(
+            AnuncioRepository anuncios, JdbcTemplate jdbc, CursorCodec cursorCodec, MapeadorAnuncios mapeador) {
         this.anuncios = anuncios;
         this.jdbc = jdbc;
         this.cursorCodec = cursorCodec;
+        this.mapeador = mapeador;
     }
 
     /** Catálogo público: solo anuncios visibles, orden por fecha (desc) o precio (asc). */
@@ -90,7 +93,7 @@ public class ServicioCatalogo {
         }
 
         return new RespuestaColeccion<>(
-                visibles.stream().map(DtosAnuncios.AnuncioResumen::de).toList(),
+                mapeador.resumenes(visibles),
                 new PaginacionCursor(cursorSiguiente));
     }
 
@@ -100,7 +103,7 @@ public class ServicioCatalogo {
         Anuncio anuncio = anuncios
                 .findOne(EspecificacionesAnuncio.visible().and((raiz, consulta, cb) -> cb.equal(raiz.get("id"), anuncioId)))
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe o no es visible."));
-        return DtosAnuncios.AnuncioDetalle.de(anuncio);
+        return mapeador.detalle(anuncio);
     }
 
     /**
@@ -112,7 +115,7 @@ public class ServicioCatalogo {
     @Transactional(readOnly = true)
     public DtosAnuncios.AnuncioDetalle detalleSinVisibilidad(UUID anuncioId) {
         return anuncios.findById(anuncioId)
-                .map(DtosAnuncios.AnuncioDetalle::de)
+                .map(mapeador::detalle)
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
     }
 
@@ -125,7 +128,7 @@ public class ServicioCatalogo {
                 EspecificacionesAnuncio.deVendedor(vendedorId),
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id"))));
         return new RespuestaColeccion<>(
-                resultado.getContent().stream().map(DtosAnuncios.AnuncioPanel::de).toList(),
+                mapeador.paneles(resultado.getContent()),
                 new PaginacionOffset(indice, tamano, resultado.getTotalElements(), resultado.getTotalPages()));
     }
 

@@ -38,11 +38,15 @@ class ServicioRevisionTest {
     @Mock
     private AnuncioRepository repositorio;
 
+    @Mock
+    private com.unimarket.api.identity.ServicioNombresPublicos nombres;
+
     private ServicioRevision servicio;
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioRevision(repositorio);
+        when(nombres.nombrePublicoDe(any())).thenReturn("Ana P.");
+        servicio = new ServicioRevision(repositorio, new MapeadorAnuncios(nombres));
         when(repositorio.saveAndFlush(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
     }
 
