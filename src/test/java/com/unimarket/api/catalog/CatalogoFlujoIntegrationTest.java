@@ -419,8 +419,12 @@ class CatalogoFlujoIntegrationTest extends SoportePostgresIT {
             jdbc.update("UPDATE usuarios SET fecha_eliminacion = now() WHERE id = ?", vendedor.id());
 
             JsonNode detalle = json.readTree(rest.getForEntity("/v1/anuncios/" + anuncioId, String.class).getBody());
+            JsonNode listado = json.readTree(rest.getForEntity("/v1/anuncios?q=" + nombre, String.class).getBody());
 
             assertThat(detalle.get("vendedorNombre").asText()).isEqualTo("Vendedor");
+            assertThat(listado.get("datos").get(0).get("vendedorNombre").asText())
+                    .as("el listado tampoco revela el estado de la cuenta (R1/R15)")
+                    .isEqualTo("Vendedor");
         }
     }
 }
