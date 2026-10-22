@@ -83,6 +83,7 @@ Reglas transversales:
 | **R14** | **Solo admin cambia roles, sin auto-promoción**: el cambio de rol es exclusivo de `admin`. Un `admin` no puede cambiar SU PROPIO rol (`403`); `moderador`/`miembro` reciben `403`. El rol destino debe pertenecer al dominio (`miembro`/`moderador`/`admin`) o responde `422`; cambiar a un rol igual al actual también responde `422` sin efectos. El cambio se refleja en los próximos tokens emitidos. |
 | **R15** | **Cuentas inhabilitadas o dadas de baja sin sesión**: `habilitado=false` (decisión reversible del `admin`) o `fecha_eliminacion IS NOT NULL` impiden login, refresh y toda lectura de perfil, con respuesta indistinguible de credenciales inválidas. El panel admin NUNCA borra usuarios físicamente ni escribe `fecha_eliminacion` — la baja pertenece solo al flujo del propio usuario. Re-habilitar restaura el login. |
 | **R16** | **Mensajería y visibilidad del anuncio**: abrir una conversación exige que el anuncio esté visible (`estado='disponible' AND estado_revision='aprobado'`) y que su vendedor esté activo (`habilitado=true`, `fecha_eliminacion IS NULL`). Los mensajes a una conversación existente se envían mientras ambos participantes estén activos, sin importar el estado posterior del anuncio. El historial existente permanece legible para los dos participantes en todo caso. |
+| **R17** | **Nombre público del vendedor**: toda vista de un anuncio —catálogo, detalle y panel— publica `vendedorNombre` junto a `vendedorId`: **nombre de pila + inicial del último apellido** (`"Ana Pérez"` → `"Ana P."`), máximo 60 caracteres. El nombre completo nunca viaja al wire. El listado resuelve los nombres en lote (una consulta por página, nunca una por anuncio) y el detalle carga uno. Cuando el nombre no es resoluble —cuenta inexistente, dada de baja o sin nombre— se publica el genérico `"Vendedor"`, que no revela el estado de la cuenta (R1, R15). |
 
 ## 5. Requisitos funcionales de alto nivel
 
@@ -91,7 +92,7 @@ Reglas transversales:
 | **Datos** | 5 tablas de negocio (`usuarios`, `categorias`, `anuncios`, `conversaciones`, `mensajes`) + 3 tablas de tokens (`tokens_verificacion_email`, `tokens_restablecimiento_contrasena`, `tokens_refresh`); CHECKs, UNIQUEs, FKs con comportamiento `ON DELETE` y 16 índices por patrón de query (13 de negocio + 3 de tokens activos); migraciones versionadas forward-only e inmutables; seed idempotente de 6 categorías base. |
 | **Identidad** | Registro con confirmación de email obligatoria (bloquea el login hasta confirmar), reenvío de confirmación con cooldown (N5), login con emisión de JWT, refresh con rotación, logout, restablecimiento y cambio de contraseña, lectura/actualización de perfil, subida/eliminación de avatar y baja de cuenta soft-delete. |
 | **Autorización** | Jerarquía de roles, matriz de permisos por operación con caso permitido y denegado por regla, ownership de anuncios, protección de columnas de moderación, prohibiciones de auto-aprobación y auto-promoción. |
-| **Catálogo público** | `GET /v1/anuncios` y detalle: solo anuncios visibles, paginación por cursor opaco estable (default 20, máximo 100), orden por defecto `fechaCreacion DESC` (también `precio`), filtro `categoriaId`, búsqueda `q` en nombre y descripción con escape de comodines `%`, `_` y `\`. |
+| **Catálogo público** | `GET /v1/anuncios` y detalle: solo anuncios visibles, paginación por cursor opaco estable (default 20, máximo 100), orden por defecto `fechaCreacion DESC` (también `precio`), filtro `categoriaId`, búsqueda `q` en nombre y descripción con escape de comodines `%`, `_` y `\`. Cada anuncio publica el nombre público de su vendedor (`vendedorNombre`, R17), resuelto en lote para la página. |
 | **Anuncios (vendedor)** | Crear siempre `pendiente` (201 + `Location`), editar con reset a `pendiente`, toggle de visibilidad solo sobre `aprobado` (`disponible ↔ inactivo`), marcar vendido, baja por estado `eliminado` sin destruir conversaciones ni objetos, panel "mis anuncios" en offset con badge de revisión y `motivoRechazo`. |
 | **Almacenamiento de medios** | Clave de objeto única `anuncios/{vendedorId}/{uuid}.{ext}`, subida multipart exclusiva vía API, lectura pública por URL, borrado sin objetos huérfanos al reemplazar o eliminar, escritura atómica de ambos arrays de imágenes en la misma transacción que la fila. |
 | **Mensajería** | Crear/reusar conversación por anuncio (idempotente con `Idempotency-Key`), enviar mensajes de texto, historial con cursor hacia atrás (página inicial = más recientes), conteo y marcado de no leídos como acción explícita (un `GET` no muta `leido`), lista "mis conversaciones" ordenada por actividad con `ultimoMensaje` y `noLeidos`. Apertura de conversación solo sobre anuncios visibles con vendedor activo (R16). Sin tiempo real: la respuesta HTTP del envío es el contrato. |
@@ -132,7 +133,7 @@ Reglas transversales:
 
 Checklist verificable:
 
-> **Verificación (2026-10-14)**: 16 de los 17 criterios están evidenciados por la suite automatizada — detalle por criterio en `odd/tasks/aceptacion-final.md`. El criterio sobre los clientes web/móvil queda fuera de este repositorio por diseño (repos propios que consumen el contrato).
+> **Verificación (2026-10-21)**: 17 de los 18 criterios están evidenciados por la suite automatizada — detalle por criterio en `odd/tasks/aceptacion-final.md`. El criterio sobre los clientes web/móvil queda fuera de este repositorio por diseño (repos propios que consumen el contrato).
 
 - [ ] Un registro nuevo crea usuario `miembro` sin email confirmado y el login se rechaza hasta confirmar.
 - [ ] Registrar dos veces el mismo email en distinto caso responde `409` y no crea duplicados.
@@ -151,6 +152,7 @@ Checklist verificable:
 - [ ] Suite de pruebas en verde con el gate de cobertura (dominio ≥ 80 %; los de UI pertenecen a los repos de clientes) y el contrato validado en CI.
 - [ ] Web y móvil consumen exclusivamente el cliente generado; ninguna app define su propio acceso a la API.
 - [ ] Sin políticas de seguridad a nivel de fila ni triggers de infraestructura de identidad/auditoría en la base de datos.
+- [ ] Cada anuncio publica el nombre público de su vendedor (nombre de pila + inicial del último apellido, máximo 60) y nunca el nombre completo; sin nombre resoluble responde `"Vendedor"` (R17).
 
 ## 9. Preguntas abiertas
 

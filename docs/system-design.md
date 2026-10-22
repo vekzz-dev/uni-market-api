@@ -69,7 +69,7 @@ Estructura de paquetes bajo `com.unimarket.api`:
 |---|---|---|
 | `shared/` | Errores RFC 9457 (`ProblemDetail`), envelope de paginación, cursor, kernel de seguridad ( extractor JWT, jerarquía de roles ), utilidades de hash de tokens | Sin lógica de negocio |
 | `identity/` | Registro, confirmación de email, login, refresh rotativo, logout, reset y cambio de contraseña, perfil, avatar, baja soft-delete, gestión de tokens (3 tablas del DBDD) | Emite y valida JWT |
-| `catalog/` | Anuncios del vendedor (crear/editar/visibilidad/vendido/baja), catálogo público con búsqueda y cursor, imágenes (multipart → storage) | Modificación de contenido resetea revisión (R6) |
+| `catalog/` | Anuncios del vendedor (crear/editar/visibilidad/vendido/baja), catálogo público con búsqueda y cursor, imágenes (multipart → storage) | Modificación de contenido resetea revisión (R6); publica el nombre público del vendedor resolviéndolo vía `identity/ServicioNombresPublicos` (R17, en lote para la página) |
 | `moderation/` | Cola FIFO por estado de revisión y decisiones explícitas (aprobar/rechazar/retraer) | Consume el servicio de aplicación `catalog/ServicioRevision` — el ÚNICO escritor de `estadoRevision`, `revisadoPor`, `fechaRevision` y `motivoRechazo` (R5); anti-auto-decisión 403 |
 | `messaging/` | Conversaciones (dedupe por par, apertura R16) y mensajes (envío, historial con cursor, no leídos, panel "mis conversaciones") | `vendedorId` derivado del anuncio; participación verificada en servicio (R10); historial legible vía `detalleSinVisibilidad` de catalog aunque el anuncio deje de ser visible (R16) |
 | `admin/` | CRUD de categorías, listado de usuarios filtrable por rol, cambio de rol, habilitar/inhabilitar | Sin borrado físico de usuarios ni `fecha_eliminacion` desde el panel (R15) |
@@ -78,7 +78,7 @@ Estructura de paquetes bajo `com.unimarket.api`:
 
 **Dependencias entre módulos** (única dirección permitida):
 
-- `catalog` necesita `identity` (vendedor autenticado) y `media` (persistencia de imágenes).
+- `catalog` necesita `identity` (vendedor autenticado y nombre público del vendedor, R17) y `media` (persistencia de imágenes).
 - `moderation` opera sobre anuncios de `catalog` (servicio de aplicación de catalog expone operaciones de revisión).
 - `messaging` necesita `catalog` (derivar `vendedor_id`, validar anuncio existente) e `identity`.
 - `notifications` es un receptor de eventos: nadie lo llama en línea salvo para el reenvío.
