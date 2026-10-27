@@ -182,7 +182,7 @@ Esta definición resuelve el hallazgo de la revisión del PRD (cursor de un solo
 
 ## 7. Datos
 
-Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 índices, CHECKs, FKs, migraciones V1–V3). Decisiones de integración con el código:
+Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 índices, CHECKs, FKs, migraciones V1–V4). Decisiones de integración con el código:
 
 | Tema | Decisión |
 |---|---|
@@ -191,7 +191,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 | Enumeraciones de dominio | Enums Java (`Rol`, `EstadoAnuncio`, `EstadoRevision`) con conversor `AttributeConverter`; el CHECK de BD respalda el dominio cerrado |
 | `jsonb` (imágenes) | Tipos Hypersistence o conversor propio; escritura de ambos arrays en la misma transacción que la fila (R8) |
 | Búsqueda `ILIKE` | Repositorio con `ILIKE` + escape de `%`, `_`, `\` (PRD §5); trigram lo acelera, la corrección semántica la da el escape |
-| Migraciones | Solo en este repositorio, Flyway en arranque; `V1__esquema_base.sql`, `V2__datos_categorias.sql`, `V3__tokens_identidad.sql`; requiere el módulo `flyway-database-postgresql` (Flyway 12 ya no incluye el soporte de motor PostgreSQL) |
+| Migraciones | Solo en este repositorio, Flyway en arranque; `V1__esquema_base.sql`, `V2__datos_categorias.sql`, `V3__tokens_identidad.sql`, `V4__origen_rechazo_anuncios.sql`; requiere el módulo `flyway-database-postgresql` (Flyway 12 ya no incluye el soporte de motor PostgreSQL) |
 
 **Correcciones aplicadas al DBDD en esta revisión (2026-10-10)**: índices parciales `ux_tokens_*_activos` (16 índices en total), `id` como desempate en `idx_anuncios_publicacion` e `idx_mensajes_conversacion_creado`, índices compuestos de participantes `(comprador_id/vendedor_id, fecha_actualizacion DESC)` para "mis conversaciones" (reemplazan los de una columna, que quedaban cubiertos como prefijo izquierdo), CHECKs de consistencia del trail de moderación y de longitud de `icono`, y `NO ACTION` explícito en las FK de tokens.
 
@@ -219,7 +219,7 @@ Resumen y referencia. **Fuente de verdad: `database-design.md`** (8 tablas, 16 �
 |---|---|---|
 | Unitario | Lógica de dominio: resets de revisión, validación de participación, jerarquía de roles; reglas numéricas de límites con `@ParameterizedTest` | JUnit 5 + Mockito (`@Mock`/`@InjectMocks`) + **AssertJ**, sin Spring |
 | Slice web | Controladores: códigos HTTP, validación de DTOs, errores RFC 9457 | `@WebMvcTest` con **`MockMvcTester`** (aserciones AssertJ); `@MockitoBean` para dependencias (no `@MockBean`, deprecado en Boot 4) |
-| Slice datos | Repositorios y las decisiones D4/D5: cursor compuesto `(fecha_creacion, id)`, `Specification`s de visibilidad/ownership (R4, R7), `ILIKE` con trigram real, mapeo de violaciones de CHECK a errores | `@DataJpaTest` + **Testcontainers (PostgreSQL real)** con Flyway V1–V3 aplicadas |
+| Slice datos | Repositorios y las decisiones D4/D5: cursor compuesto `(fecha_creacion, id)`, `Specification`s de visibilidad/ownership (R4, R7), `ILIKE` con trigram real, mapeo de violaciones de CHECK a errores | `@DataJpaTest` + **Testcontainers (PostgreSQL real)** con Flyway V1–V4 aplicadas |
 | Slice cliente HTTP | Adaptador de **Resend**: petición HTTP formada y manejo de fallo del proveedor sin tocar Resend (D12) | `@RestClientTest` |
 | Slice serialización | Espejo wire `camelCase` ↔ columnas `snake_case`; payloads de errores `application/problem+json` | `@JsonTest` |
 | Integración | Flujos completos contra **PostgreSQL real** (nada en memoria — PRD §6): auth con rotación y reuso, moderación end-to-end, catálogo, chat, guards permitido/denegado | `@SpringBootTest` con contexto mínimo + Testcontainers; una instancia de PostgreSQL compartida entre clases (context caching) para no pagar arranque por suite |

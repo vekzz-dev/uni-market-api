@@ -121,7 +121,7 @@ El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en In
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**193 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**222 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 
@@ -146,7 +146,7 @@ Ejecuta la suite completa (**193 tests**) contra **PostgreSQL 18 real** (Testcon
 | Auth | `/auth/login` · `/auth/refresh` · `/auth/logout` · `/auth/confirmar-email` · `/auth/restablecer-contrasena` (+ `/confirmar`) · `/auth/reenviar-confirmacion` |
 | Cuenta | `/usuarios` (registro) · `/usuarios/me` (+ avatar, contraseña, baja) |
 | Catálogo | `/anuncios` (público, cursor) · `/anuncios/{id}` · `/categorias` (público) |
-| Vendedor | `/anuncios` (multipart) · `/anuncios/{id}/contenido` · `/anuncios/{id}/imagenes` · `/anuncios/{id}/visibilidad` · `/anuncios/{id}/vendido` · `/mis-anuncios` |
+| Vendedor | `/anuncios` (multipart) · `/anuncios/{id}/contenido` · `/anuncios/{id}/imagenes` · `/anuncios/{id}/visibilidad` · `/anuncios/{id}/vendido` · `/mis-anuncios` (filtro `estadoRevision`) · `/mis-anuncios/{id}` |
 | Mensajería | `/conversaciones` · `/mis-conversaciones` · `/conversaciones/{id}` · `/conversaciones/{id}/mensajes` · `/conversaciones/{id}/lecturas` |
 | Moderación | `/moderacion/anuncios` · `/moderacion/anuncios/{id}/decisiones` |
 | Admin | `/admin/usuarios` (+ `/rol`, `/habilitacion`) · `/categorias` (POST/PATCH/DELETE) |
@@ -155,7 +155,7 @@ Ejecuta la suite completa (**193 tests**) contra **PostgreSQL 18 real** (Testcon
 
 ```
 src/main/java/com/unimarket/api/   shared · identity · catalog · moderation · messaging · admin · notifications · media
-src/main/resources/db/migration/   Flyway V1–V3 (esquema, seed, tokens)
+src/main/resources/db/migration/   Flyway V1–V4 (esquema, seed, tokens, procedencia del rechazo)
 src/test/java/                     unit + slices + integración Testcontainers
 docs/                              PRD · DBDD · SDD (fuente de verdad del diseño)
 odd/tasks/                         registro de trabajo por feature (con evidencia)

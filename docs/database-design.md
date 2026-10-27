@@ -4,7 +4,7 @@ Documento autónomo: describe por completo el esquema de datos de **Uni Market**
 
 | Campo | Valor |
 |---|---|
-| Estado | Aprobado — implementado en V1–V3 y verificado contra PostgreSQL 18 |
+| Estado | Aprobado — implementado en V1–V4 y verificado contra PostgreSQL 18 |
 | Última actualización | 2026-10-14 |
 | Fecha | 2026-10-09 |
 | Motor / migraciones | PostgreSQL 18 (última versión mayor vigente; PostgreSQL no publica ediciones "LTS": soporte de 5 años por versión mayor); Flyway (versionadas, forward-only) |
@@ -285,7 +285,7 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | Herramienta y nomenclatura | Flyway, integrada en el arranque de la aplicación backend (Spring Boot + Spring Data). Migraciones versionadas `V{n}__descripcion.sql` (doble guion bajo). |
 | Orden de aplicación | `V1` → `V2` → `V3`, estrictamente secuencial. |
 | Inmutabilidad (forward-only) | Una migración aplicada NUNCA se edita: las correcciones se expresan como una migración nueva `V{n}` con número superior. |
-| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. |
+| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). |
 | Seeds idempotentes | El seed usa `INSERT ... ON CONFLICT (nombre) DO NOTHING`: re-ejecutarlo no duplica categorías y el conteo se mantiene en 6. |
 | Reproducibilidad | El esquema completo se produce aplicando `V1` + `V2` + `V3` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
-| Verificación | Tras la aplicación: 8 tablas presentes, 16 índices en `pg_indexes` (13 de negocio + 3 de tokens), los CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |
+| Verificación | Tras la aplicación: 8 tablas presentes, 16 índices en `pg_indexes` (13 de negocio + 3 de tokens), los 15 CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |

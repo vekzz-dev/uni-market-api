@@ -24,7 +24,7 @@
 | 11 | Reset responde idéntico exista o no + rate limit | ✅ | `IdentityFlujoIntegrationTest` (202 idéntico, 429) |
 | 12 | Vendedor no modifica ajenos (403) ni ve ajenos en su panel | ✅ | `CatalogoFlujoIntegrationTest.editarAjenoYReset` + `AnuncioRepositoryTest.soloDelVendedor` |
 | 13 | Límites de imagen con status correcto y sin objetos subidos (5 pareadas/5 MB/avatar 2 MB/tipos) | ✅ | `CatalogoFlujoIntegrationTest.rechazosSinHuerfanos` (422 sin huérfanos) + `ServicioAnunciosTest` (firma/tamaño/cantidad) + `IdentityFlujoIntegrationTest` (avatar) + `DbSchemaVerificationTest` (CHECKs pareados) |
-| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn clean verify`: 193 tests, gate ≥ 80 % activo (91.6 %), `OpenApiContractTest` (estructura + sin claves duplicadas). El pipeline de GitHub Actions ejecuta este mismo comando sobre el runner fijado `ubuntu-24.04` |
+| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn verify`: 222 tests, gate ≥ 80 % activo (92 %), `OpenApiContractTest` (estructura + sin claves duplicadas). El pipeline de GitHub Actions ejecuta este mismo comando sobre el runner fijado `ubuntu-24.04` |
 | 15 | Web y móvil consumen EXCLUSIVAMENTE el cliente generado | ➖ N/A en este repo | Los clientes viven en repos externos (decisión de alcance, PRD §7); este repo garantiza la fuente de verdad y su validación en el build |
 | 16 | Sin políticas RLS ni triggers en la BD | ✅ | `AceptacionFinalIntegrationTest.sinRlsNiTriggers` (`pg_policies`=0, `pg_trigger` no internos=0) + `DbSchemaVerificationTest` |
 | 17 | Apertura solo sobre anuncio visible con vendedor activo; envío con contraparte activa; historial previo legible | ✅ | `MensajeriaFlujoIntegrationTest.apertura/participacionYEnvio/flujoCompleto` |
