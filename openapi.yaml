@@ -610,16 +610,40 @@ paths:
         aunque el filtro se manipule. Offset + total. Cada ítem incluye `estadoRevision`
         y `motivoRechazo` (badge del panel).
       parameters:
+        - $ref: '#/components/parameters/EstadoRevisionPanel'
         - $ref: '#/components/parameters/Pagina'
         - $ref: '#/components/parameters/Limite'
       responses:
         '200':
-          description: Panel paginado.
+          description: Panel paginado; `total` y `totalPaginas` reflejan el filtro.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ColeccionAnunciosPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
         '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /mis-anuncios/{anuncioId}:
+    get:
+      tags: [Anuncios]
+      operationId: leerMiAnuncio
+      summary: Un anuncio propio por id
+      description: |
+        Recupera el anuncio del vendedor autenticado aunque NO sea visible públicamente
+        (pendiente o rechazado), que es justo lo que el detalle público oculta (R4).
+        Ownership como predicado de repositorio (R7): un anuncio ajeno y uno inexistente
+        responden el MISMO `404`, sin revelar existencia.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      responses:
+        '200':
+          description: Vista del panel del anuncio propio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnuncioPanel'
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
 
   # ------------------------------------------------------------ Categorias --
   /categorias:
@@ -1133,6 +1157,18 @@ components:
         allOf:
           - $ref: '#/components/schemas/EstadoRevision'
         default: pendiente
+    EstadoRevisionPanel:
+      name: estadoRevision
+      in: query
+      required: false
+      description: |
+        Filtro aditivo del panel (R7). Sin el parámetro se devuelve el panel completo.
+        Cada valor es excluyente: `rechazado` son los rechazos de revisión y `retraido`
+        las aprobaciones revocadas por moderación (misma `estadoRevision='rechazado'`,
+        distinta procedencia). Valor fuera del dominio → `400`.
+      schema:
+        type: string
+        enum: [pendiente, aprobado, rechazado]
     IdempotencyKey:
       name: Idempotency-Key
       in: header

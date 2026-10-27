@@ -119,13 +119,35 @@ public class ServicioCatalogo {
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
     }
 
-    /** Panel del vendedor: ownership como predicado (R7) + offset con total. */
+    /**
+     * Anuncio propio del panel (issue #3): el vendedor lo recupera aunque esté pendiente o
+     * rechazado, algo que el detalle público oculta por R4. Ajeno e inexistente responden
+     * el MISMO {@code 404}: el guard de ownership se aplica en el predicado (R7).
+     */
     @Transactional(readOnly = true)
-    public RespuestaColeccion<DtosAnuncios.AnuncioPanel> misAnuncios(UUID vendedorId, Integer pagina, Integer limite) {
+    public DtosAnuncios.AnuncioPanel panelPropio(UUID vendedorId, UUID anuncioId) {
+        Anuncio anuncio = anuncios
+                .findOne(EspecificacionesAnuncio.deVendedor(vendedorId)
+                        .and((raiz, consulta, cb) -> cb.equal(raiz.get("id"), anuncioId)))
+                .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
+        return mapeador.panel(anuncio);
+    }
+
+    /**
+     * Panel del vendedor: ownership como predicado (R7) + offset con total. El filtro por
+     * estado de revisión es aditivo y el total lo refleja (issue #3).
+     */
+    @Transactional(readOnly = true)
+    public RespuestaColeccion<DtosAnuncios.AnuncioPanel> misAnuncios(
+            UUID vendedorId, String estadoRevision, Integer pagina, Integer limite) {
         int tamano = validarLimite(limite);
         int indice = pagina == null || pagina < 0 ? 0 : pagina;
+        Specification<Anuncio> filtro = EspecificacionesAnuncio.deVendedor(vendedorId);
+        if (estadoRevision != null && !estadoRevision.isBlank()) {
+            filtro = filtro.and(EspecificacionesAnuncio.deRevision(validarEstadoRevision(estadoRevision)));
+        }
         Page<Anuncio> resultado = anuncios.findAll(
-                EspecificacionesAnuncio.deVendedor(vendedorId),
+                filtro,
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id"))));
         return new RespuestaColeccion<>(
                 mapeador.paneles(resultado.getContent()),
@@ -144,6 +166,19 @@ public class ServicioCatalogo {
                         rs.getString("icono"),
                         rs.getInt("orden")));
         return new DtosAnuncios.CategoriasRespuesta(datos);
+    }
+
+    /**
+     * El valor del filtro llega como texto y se valida aquí: un enum de Spring respondería
+     * un error de conversión genérico y el contrato exige un {@code 400} con mensaje claro.
+     */
+    private static EstadoRevision validarEstadoRevision(String valor) {
+        try {
+            return EstadoRevision.valueOf(valor.strip());
+        } catch (IllegalArgumentException desconocido) {
+            throw new EstructuraInvalidaException(
+                    "El parámetro 'estadoRevision' solo admite pendiente, aprobado o rechazado.");
+        }
     }
 
     private static int validarLimite(Integer limite) {

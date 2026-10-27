@@ -31,6 +31,11 @@ public final class EspecificacionesAnuncio {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("vendedorId"), vendedorId);
     }
 
+    /** Filtro del panel por estado de revisión: cada chip ve solo sus filas (R7). */
+    public static Specification<Anuncio> deRevision(EstadoRevision estadoRevision) {
+        return (raiz, consulta, cb) -> cb.equal(raiz.get("estadoRevision"), estadoRevision);
+    }
+
     /** Filtro por categoría del catálogo. */
     public static Specification<Anuncio> deCategoria(Integer categoriaId) {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("categoriaId"), categoriaId);

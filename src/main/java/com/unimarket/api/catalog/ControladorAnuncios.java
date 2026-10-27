@@ -125,9 +125,18 @@ public class ControladorAnuncios {
     @PreAuthorize("hasAnyRole('MIEMBRO','MODERADOR','ADMIN')")
     public ResponseEntity<RespuestaColeccion<DtosAnuncios.AnuncioPanel>> misAnuncios(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String estadoRevision,
             @RequestParam(required = false) Integer pagina,
             @RequestParam(required = false) Integer limite) {
-        return ResponseEntity.ok(catalogo.misAnuncios(idActual(jwt), pagina, limite));
+        return ResponseEntity.ok(catalogo.misAnuncios(idActual(jwt), estadoRevision, pagina, limite));
+    }
+
+    /** Un anuncio propio por id, aunque no sea visible públicamente (R7, issue #3). */
+    @GetMapping("/mis-anuncios/{anuncioId}")
+    @PreAuthorize("hasAnyRole('MIEMBRO','MODERADOR','ADMIN')")
+    public ResponseEntity<DtosAnuncios.AnuncioPanel> miAnuncio(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID anuncioId) {
+        return ResponseEntity.ok(catalogo.panelPropio(idActual(jwt), anuncioId));
     }
 
     private static UUID idActual(Jwt jwt) {
