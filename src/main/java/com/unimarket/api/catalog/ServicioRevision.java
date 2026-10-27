@@ -60,16 +60,19 @@ public class ServicioRevision {
                 exigirEstado(anuncio, EstadoRevision.pendiente, "Solo un anuncio pendiente puede aprobarse.");
                 anuncio.setEstadoRevision(EstadoRevision.aprobado);
                 anuncio.setMotivoRechazo(null);
+                anuncio.setOrigenRechazo(null);
             }
             case rechazar -> {
                 exigirEstado(anuncio, EstadoRevision.pendiente, "Solo un anuncio pendiente puede rechazarse.");
                 anuncio.setEstadoRevision(EstadoRevision.rechazado);
                 anuncio.setMotivoRechazo(exigirMotivo(motivoRechazo));
+                anuncio.setOrigenRechazo(OrigenRechazo.rechazo);
             }
             case retraer -> {
                 exigirEstado(anuncio, EstadoRevision.aprobado, "Solo un anuncio aprobado puede retraerse.");
                 anuncio.setEstadoRevision(EstadoRevision.rechazado);
                 anuncio.setMotivoRechazo(exigirMotivo(motivoRechazo));
+                anuncio.setOrigenRechazo(OrigenRechazo.retraccion);
             }
         }
         anuncio.setRevisadoPor(revisorId);

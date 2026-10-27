@@ -1168,7 +1168,7 @@ components:
         distinta procedencia). Valor fuera del dominio → `400`.
       schema:
         type: string
-        enum: [pendiente, aprobado, rechazado]
+        enum: [pendiente, aprobado, rechazado, retraido]
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1474,7 +1474,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/AnuncioDetalle'
         - type: object
-          required: [estadoRevision]
+          required: [estadoRevision, retraido]
           properties:
             estadoRevision:
               $ref: '#/components/schemas/EstadoRevision'
@@ -1482,6 +1482,12 @@ components:
               type: string
               nullable: true
               description: Visible para el vendedor; poblado en rechazo/retracción (R5).
+            retraido:
+              type: boolean
+              description: |
+                `true` cuando la aprobación se revocó por moderación (R5). Es la procedencia
+                del rechazo, no un valor de `estadoRevision`: un anuncio retraído sigue
+                publicando `estadoRevision=rechazado`.
             fechaRevision:
               $ref: '#/components/schemas/FechaHora'
               nullable: true

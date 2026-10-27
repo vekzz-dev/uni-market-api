@@ -86,7 +86,11 @@ public final class DtosAnuncios {
         }
     }
 
-    /** Vista del vendedor/panel: añade el estado de revisión y su trail (R5/R6). */
+    /**
+     * Vista del vendedor/panel: añade el estado de revisión y su trail (R5/R6). {@code retraido}
+     * distingue una aprobación revocada de un rechazo de revisión sin cambiar el enum
+     * {@code estadoRevision}, que sigue con tres valores (issue #4).
+     */
     public record AnuncioPanel(
             UUID id,
             String nombre,
@@ -101,6 +105,7 @@ public final class DtosAnuncios {
             Instant fechaActualizacion,
             EstadoRevision estadoRevision,
             String motivoRechazo,
+            boolean retraido,
             Instant fechaRevision) {
 
         public static AnuncioPanel de(Anuncio anuncio, String vendedorNombre) {
@@ -118,6 +123,7 @@ public final class DtosAnuncios {
                     anuncio.getFechaActualizacion(),
                     anuncio.getEstadoRevision(),
                     anuncio.getMotivoRechazo(),
+                    anuncio.getOrigenRechazo() == OrigenRechazo.retraccion,
                     anuncio.getFechaRevision());
         }
     }

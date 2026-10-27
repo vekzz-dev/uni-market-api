@@ -69,6 +69,7 @@ class AnuncioRepositoryTest {
         }
         if (revision == EstadoRevision.rechazado) {
             a.setMotivoRechazo("incumple las normas de publicación");
+            a.setOrigenRechazo(OrigenRechazo.rechazo);
         }
         return a;
     }

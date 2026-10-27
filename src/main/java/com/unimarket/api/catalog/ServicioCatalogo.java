@@ -144,7 +144,7 @@ public class ServicioCatalogo {
         int indice = pagina == null || pagina < 0 ? 0 : pagina;
         Specification<Anuncio> filtro = EspecificacionesAnuncio.deVendedor(vendedorId);
         if (estadoRevision != null && !estadoRevision.isBlank()) {
-            filtro = filtro.and(EspecificacionesAnuncio.deRevision(validarEstadoRevision(estadoRevision)));
+            filtro = filtro.and(validarFiltro(estadoRevision).especificacion());
         }
         Page<Anuncio> resultado = anuncios.findAll(
                 filtro,
@@ -172,12 +172,12 @@ public class ServicioCatalogo {
      * El valor del filtro llega como texto y se valida aquí: un enum de Spring respondería
      * un error de conversión genérico y el contrato exige un {@code 400} con mensaje claro.
      */
-    private static EstadoRevision validarEstadoRevision(String valor) {
+    private static FiltroPanel validarFiltro(String valor) {
         try {
-            return EstadoRevision.valueOf(valor.strip());
+            return FiltroPanel.valueOf(valor.strip());
         } catch (IllegalArgumentException desconocido) {
             throw new EstructuraInvalidaException(
-                    "El parámetro 'estadoRevision' solo admite pendiente, aprobado o rechazado.");
+                    "El parámetro 'estadoRevision' solo admite pendiente, aprobado, rechazado o retraido.");
         }
     }
 

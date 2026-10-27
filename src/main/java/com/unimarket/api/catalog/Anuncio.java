@@ -65,6 +65,9 @@ public class Anuncio {
 
     private String motivoRechazo;
 
+    @Convert(converter = ConvertidorOrigenRechazo.class)
+    private OrigenRechazo origenRechazo;
+
     private Instant fechaCreacion;
 
     private Instant fechaActualizacion;
@@ -92,6 +95,7 @@ public class Anuncio {
         revisadoPor = null;
         fechaRevision = null;
         motivoRechazo = null;
+        origenRechazo = null;
     }
 
     public UUID getId() {
@@ -192,6 +196,14 @@ public class Anuncio {
 
     public void setMotivoRechazo(String motivoRechazo) {
         this.motivoRechazo = motivoRechazo;
+    }
+
+    public OrigenRechazo getOrigenRechazo() {
+        return origenRechazo;
+    }
+
+    public void setOrigenRechazo(OrigenRechazo origenRechazo) {
+        this.origenRechazo = origenRechazo;
     }
 
     public Instant getFechaCreacion() {

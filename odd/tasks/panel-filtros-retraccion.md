@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-26) |
+| Estado | Completada (2026-10-26; `mvn -B verify` EXIT=0, 221 tests, cobertura de líneas 91 %) |
 | Creado | 2026-10-26 |
 | Alcance | Issues #3 y #4: lectura del panel por id, filtro por `estadoRevision` y procedencia de la retracción (`origen_rechazo`) |
 | No incluye | Filtro por `estado` (chip «Vendidos»), historial de decisiones de moderación, caché en cliente |
@@ -26,10 +26,10 @@
 
 - [x] **T1 — #3 lectura por id**: `ServicioCatalogo.panelPropio` + ruta en `ControladorAnuncios` + contrato + integración (propio/ajeno/inexistente/401). Ruta: inline.
 - [x] **T2 — #3 filtro**: validación del valor, predicado y paginación con total filtrado + contrato + tests. Ruta: inline.
-- [ ] **T3 — #4 esquema**: `OrigenRechazo` + converter + campo en `Anuncio` + migración `V4` + `DbSchemaVerificationTest` al día. Ruta: inline.
-- [ ] **T4 — #4 servicio**: escritura/limpieza del origen en `ServicioRevision` y `limpiarTrailRevision`; unit tests de la máquina de estados. Ruta: inline.
-- [ ] **T5 — #4 wire**: `retraido` en `AnuncioPanel`, valor de filtro en el contrato y semántica excluyente; integración (retraído aparece en `retraido` y no en `rechazado`). Ruta: inline.
-- [ ] **T6 — Verificación y entrega**: `mvn -q -B verify`, PRD/DBDD sincronizados, commits por issue. Ruta: inline.
+- [x] **T3 — #4 esquema**: `OrigenRechazo` + converter + campo en `Anuncio` + migración `V4` + `DbSchemaVerificationTest` al día. Ruta: inline.
+- [x] **T4 — #4 servicio**: escritura/limpieza del origen en `ServicioRevision` y `limpiarTrailRevision`; unit tests de la máquina de estados. Ruta: inline.
+- [x] **T5 — #4 wire**: `retraido` en `AnuncioPanel`, valor de filtro en el contrato y semántica excluyente; integración (retraído aparece en `retraido` y no en `rechazado`). Ruta: inline.
+- [x] **T6 — Verificación y entrega**: `mvn -q -B verify`, PRD/DBDD sincronizados, commits por issue. Ruta: inline.
 
 ## Log
 
@@ -38,5 +38,7 @@
 - **L3** — Issue #4 (verbatim, extracto): «Migración `V4`: columna `origen_rechazo varchar(20)` nullable + backfill de las filas ya rechazadas a `'rechazo'`, y dos CHECK [...] `ServicioRevision`: `rechazar` → `'rechazo'`; `retraer` → `'retraccion'`; `aprobar` → `NULL`. Filtro: `estadoRevision=retraido` se traduce a `rechazado AND origen_rechazo='retraccion'` [...] `AnuncioPanel` gana `retraido: boolean` (aditivo).»
 - **L4** — Evidencia previa (2026-10-26): `retraer` deja `estadoRevision='rechazado'` sin rastro del origen (`ServicioRevision.java:69-73`); `EstadoRevision` tiene tres valores (`EstadoRevision.java`); `NoEncontradoPropio` citado en la issue no existe en el código (se usa `NoEncontradoException`).
 - **L5** — Decisión: el parámetro del panel se declara como esquema propio (`EstadoRevisionPanel`) porque `#/components/parameters/EstadoRevision` lo comparte la cola de moderación (`openapi.yaml:898`) y `retraido` no pertenece a ese dominio.
+- **L8** — Evidencia #4 (2026-10-26, observada): RED inicial (`retraido` → `400` en el filtro y `retraido` ausente del panel); GREEN con `RetraccionProcedenciaIntegrationTest` 2/2 y `ServicioRevisionTest` ampliado. El CHECK nuevo destapó un fixture inconsistente en `AnuncioRepositoryTest` (rechazaba por repositorio sin procedencia): se corrigió el fixture, no la regla — es exactamente lo que el CHECK debe impedir.
+- **L9** — Evidencia (2026-10-26): `mvn -B verify` EXIT=0 · **221 tests** · 0 fallos · cobertura de líneas **91 %** con el gate activo. `DbSchemaVerificationTest` actualizado a V1–V4 y a los 15 CHECKs nombrados.
 - **L7** — Evidencia #3 (2026-10-26, observada): RED inicial con la ruta inexistente (`404`) y el parámetro ignorado; GREEN con `PanelVendedorIntegrationTest` 5/5. El 404 indistinguible compara cuerpo normalizado: solo cambia el id dentro de `instance` (el `ProblemDetail` incluye la ruta), no el `title` ni el `detail`.
 - **L6** — Decisión: sin índice nuevo. La consulta del panel usa `vendedor_id` (+ `estado_revision`) sobre `idx_anuncios_vendedor`; un índice compuesto queda como entrega aparte si el plan lo justifica con datos reales.

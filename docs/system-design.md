@@ -51,7 +51,7 @@ Documento autónomo para la implementación técnica del backend. Define el *có
                      └───────┬──────────────┬───────────────────┘
                              ▼              ▼
                       PostgreSQL 18    Storage de objetos (S3-compat.)
-                      (Flyway V1–V3)   + Resend (email vía API HTTP)
+                      (Flyway V1–V4)   + Resend (email vía API HTTP)
 ```
 
 **Reglas de dependencia entre capas** (verificables con ArchUnit en CI):

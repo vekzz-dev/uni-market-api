@@ -96,6 +96,9 @@ class ServicioRevisionTest {
 
             assertThat(decidido.estadoRevision()).isEqualTo(EstadoRevision.rechazado);
             assertThat(decidido.motivoRechazo()).isEqualTo("incumple las normas");
+            assertThat(decidido.retraido())
+                    .as("un rechazo de revisión no es una retracción (#4)")
+                    .isFalse();
         }
 
         @Test
@@ -109,16 +112,24 @@ class ServicioRevisionTest {
 
             assertThat(decidido.estadoRevision()).isEqualTo(EstadoRevision.rechazado);
             assertThat(decidido.motivoRechazo()).isEqualTo("imagen inapropiada");
+            assertThat(decidido.retraido()).as("la aprobación revocada conserva su procedencia (#4)").isTrue();
         }
 
         @Test
-        @DisplayName("Aprobar limpia un motivo previo")
+        @DisplayName("Aprobar limpia el motivo y la procedencia de un rechazo previo")
         void aprobarLimpiaMotivo() {
-            when(repositorio.findById(any()))
-                    .thenReturn(Optional.of(anuncio(UUID.randomUUID(), EstadoRevision.pendiente, "motivo viejo")));
+            Anuncio conTrail = anuncio(UUID.randomUUID(), EstadoRevision.pendiente, "motivo viejo");
+            conTrail.setOrigenRechazo(OrigenRechazo.rechazo);
+            when(repositorio.findById(any())).thenReturn(Optional.of(conTrail));
 
-            assertThat(servicio.decidir(UUID.randomUUID(), UUID.randomUUID(), Decision.aprobar, null).motivoRechazo())
-                    .isNull();
+            DtosAnuncios.AnuncioPanel aprobado = servicio.decidir(
+                    UUID.randomUUID(), UUID.randomUUID(), Decision.aprobar, null);
+
+            assertThat(aprobado.motivoRechazo()).isNull();
+            assertThat(aprobado.retraido())
+                    .as("aprobar no deja procedencia de rechazo")
+                    .isFalse();
+            assertThat(conTrail.getOrigenRechazo()).isNull();
         }
     }
 

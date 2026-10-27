@@ -15,7 +15,7 @@ import java.nio.file.Path;
  * Base de integración contra PostgreSQL 18 real (PRD §6: nada en memoria, SDD §9).
  *
  * <p>Un único contenedor singleton compartido por todas las subclases: el contexto Spring
- * se cachea una vez y Flyway V1–V3 corre una sola vez. Cada test aísla sus datos con
+ * se cachea una vez y Flyway V1–V4 corre una sola vez. Cada test aísla sus datos con
  * emails únicos (sufijo UUID).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

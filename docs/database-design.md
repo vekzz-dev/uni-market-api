@@ -174,6 +174,8 @@ No se declaran `idx_mensajes_conversacion` ni `idx_anuncios_estado`: quedan cubi
 | `chk_mensaje_no_vacio` | `btrim(texto) <> ''` | `mensajes` |
 | `chk_revision_trail_consistente` | `estado_revision = 'pendiente'` implica trail vacío (`revisado_por`, `fecha_revision`, `motivo_rechazo` NULL); estado ≠ `pendiente` implica `revisado_por` y `fecha_revision` poblados | `anuncios` |
 | `chk_motivo_rechazo_obligatorio` | `estado_revision = 'rechazado'` exige `motivo_rechazo` no vacío | `anuncios` |
+| `anuncios_origen_rechazo_check` | `origen_rechazo IS NULL OR origen_rechazo IN ('rechazo','retraccion')` | `anuncios` |
+| `chk_origen_rechazo_consistente` | `(estado_revision = 'rechazado') = (origen_rechazo IS NOT NULL)` | `anuncios` |
 | `chk_icono_longitud` | `char_length(icono) <= 10` | `categorias` |
 ## 4. Data Dictionary
 
@@ -219,6 +221,7 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | `revisado_por` | Moderador que decidió la última revisión. | SÍ / `NULL` | Auditoría de moderación; FK `NO ACTION`. |
 | `fecha_revision` | Decisión de moderación. | SÍ / `NULL` | Junto con `revisado_por` forma el conjunto de auditoría. |
 | `motivo_rechazo` | Motivo del rechazo o retracción. | SÍ / `NULL` | Obligatorio en todo rechazo/retracción; visible para el vendedor. |
+| `origen_rechazo` | Procedencia del rechazo: revisión o aprobación revocada. | SÍ / `NULL` | Dominio `rechazo`/`retraccion`; `NOT NULL` si y solo si `estado_revision = 'rechazado'`. No cambia el enum de estado: un retraído sigue siendo `rechazado`. |
 | `fecha_creacion` / `fecha_actualizacion` | Auditoría de la fila. | NO / `now()` | |
 **`conversaciones`** — hilo de chat por anuncio entre un comprador y el vendedor.
 

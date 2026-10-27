@@ -36,6 +36,11 @@ public final class EspecificacionesAnuncio {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("estadoRevision"), estadoRevision);
     }
 
+    /** Procedencia del rechazo: separa un rechazo de revisión de una aprobación revocada (R5). */
+    public static Specification<Anuncio> deOrigenRechazo(OrigenRechazo origenRechazo) {
+        return (raiz, consulta, cb) -> cb.equal(raiz.get("origenRechazo"), origenRechazo);
+    }
+
     /** Filtro por categoría del catálogo. */
     public static Specification<Anuncio> deCategoria(Integer categoriaId) {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("categoriaId"), categoriaId);
