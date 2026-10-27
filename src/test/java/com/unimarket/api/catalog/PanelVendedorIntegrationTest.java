@@ -1,6 +1,9 @@
 package com.unimarket.api.catalog;
 
 import com.unimarket.api.identity.SoportePostgresIT;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,6 +49,9 @@ class PanelVendedorIntegrationTest extends SoportePostgresIT {
 
     @Autowired
     private PasswordEncoder encoder;
+
+    @Autowired
+    private EntityManagerFactory emf;
 
     private record Sesion(UUID id, String token) {
     }
@@ -191,6 +197,29 @@ class PanelVendedorIntegrationTest extends SoportePostgresIT {
             assertThat(ids(panel(vendedor, null)))
                     .as("sin parámetro el panel sigue devolviendo todo")
                     .containsExactlyInAnyOrder(pendiente, aprobado, rechazado);
+        }
+
+        @Test
+        @DisplayName("Una página filtrada cuesta UNA consulta de nombres, no una por anuncio")
+        void unaConsultaDeNombresPorPagina() {
+            Sesion vendedor = sesion("miembro");
+            for (int i = 0; i < 3; i++) {
+                crearAnuncio(vendedor, "Coste " + i + " " + UUID.randomUUID());
+            }
+            Statistics estadisticas = emf.unwrap(SessionFactory.class).getStatistics();
+            estadisticas.setStatisticsEnabled(true);
+            estadisticas.clear();
+
+            JsonNode datos = panel(vendedor, "pendiente").get("datos");
+
+            assertThat(datos).hasSize(3);
+            long consultasDeUsuarios = java.util.Arrays.stream(estadisticas.getQueries())
+                    .filter(consulta -> consulta.contains("from usuarios"))
+                    .count();
+            assertThat(consultasDeUsuarios)
+                    .as("el mapeador resuelve la página en lote: %s",
+                            java.util.Arrays.toString(estadisticas.getQueries()))
+                    .isEqualTo(1);
         }
 
         @Test

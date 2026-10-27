@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | **Verificado (2026-10-12)** |
-| HEAD | `mvn verify` EXIT=0 · **214 tests, 0 fallos** · cobertura de líneas **91 %** (gate ≥ 80 % activo) |
+| HEAD | `mvn verify` EXIT=0 · **222 tests, 0 fallos** · cobertura de líneas **92 %** (gate ≥ 80 % activo) |
 | Alcance | Los 19 criterios de aceptación del PRD §8, cada uno mapeado a su evidencia real en la suite |
 | Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, CORS configurable por entorno, **traceId de correlación** (`X-Request-Id`) en cada log, BD de desarrollo en variante **alpine** (PG18) con migración collation-safe (dump → initdb musl → restore) y **runner de CI fijado** a `ubuntu-24.04`. 2026-10-21: se agrega el criterio 18 (R17, nombre público del vendedor, issue #2); los 17 criterios previos siguen verificados sin cambios |
 
@@ -35,6 +35,6 @@
 
 **18 de 19 criterios verificados con evidencia automatizada; 1 fuera de alcance de este repositorio por diseño (criterio 15)**. La entrega queda cerrada con:
 
-- `mvn verify` reproducible: 214 tests · 0 fallos · 91 % de líneas con el gate activo.
+- `mvn verify` reproducible: 222 tests · 0 fallos · 92 % de líneas con el gate activo.
 - Contrato OpenAPI validado en el build (estructura, `$ref`s y claves duplicadas).
 - Pendientes del SDD sin deudas abiertas: N3 y N8 resueltos; las notas restantes son decisiones conscientes (memoria del limiter en despliegue único; verificación real de R2 al desplegar).
