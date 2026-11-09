@@ -279,6 +279,87 @@ class MensajeriaFlujoIntegrationTest extends SoportePostgresIT {
     }
 
     @Nested
+    @DisplayName("Invariantes del lote (R16/R18)")
+    class InvariantesDelLote {
+
+        @Test
+        @DisplayName("El último mensaje desempata por id cuando las fechas son iguales")
+        void ultimoMensajeDesempataPorId() {
+            Sesion vendedora = usuarioConSesion("vendedora-ultimo", "miembro", "Ana Pérez");
+            Sesion comprador = usuarioConSesion("comprador-ultimo", "miembro", "Luis Gómez");
+            Sesion moderador = usuarioConSesion("moderador-ultimo", "moderador");
+            String anuncioId = anuncioAprobado(vendedora, moderador, "Último " + UUID.randomUUID());
+            UUID conversacionId = UUID.fromString(json.readTree(abrir(comprador.token(), anuncioId).getBody())
+                    .get("id").asText());
+
+            java.time.Instant base = java.time.Instant.parse("2026-01-01T00:00:00Z");
+            String sql = "INSERT INTO mensajes (id, conversacion_id, remitente_id, texto, leido, fecha_creacion) "
+                    + "VALUES (?,?,?,?,?,?)";
+            jdbc.update(sql, UUID.randomUUID(), conversacionId, comprador.id(), "base", false,
+                    java.time.OffsetDateTime.ofInstant(base, java.time.ZoneOffset.UTC));
+            jdbc.update(sql, UUID.randomUUID(), conversacionId, comprador.id(), "empate-a", false,
+                    java.time.OffsetDateTime.ofInstant(base.plusSeconds(60), java.time.ZoneOffset.UTC));
+            jdbc.update(sql, UUID.randomUUID(), conversacionId, comprador.id(), "empate-b", false,
+                    java.time.OffsetDateTime.ofInstant(base.plusSeconds(60), java.time.ZoneOffset.UTC));
+
+            String esperado = jdbc.queryForObject(
+                    "SELECT id::text FROM mensajes WHERE conversacion_id = ? "
+                            + "ORDER BY fecha_creacion DESC, id DESC LIMIT 1",
+                    String.class, conversacionId);
+
+            assertThat(misConversaciones(vendedora.token()).get("datos").get(0).get("ultimoMensaje").get("id").asText())
+                    .as("mismo desempate (fechaCreacion, id) que el cursor")
+                    .isEqualTo(esperado);
+        }
+
+        @Test
+        @DisplayName("El orden por actividad desempata por id y no se pierde al paginar")
+        void ordenPorActividadDesempataPorId() {
+            Sesion vendedora = usuarioConSesion("vendedora-orden", "miembro", "Ana Pérez");
+            Sesion moderador = usuarioConSesion("moderador-orden", "moderador");
+            String anuncioA = anuncioAprobado(vendedora, moderador, "A " + UUID.randomUUID());
+            String anuncioB = anuncioAprobado(vendedora, moderador, "B " + UUID.randomUUID());
+            UUID convA = UUID.fromString(json.readTree(abrir(
+                    usuarioConSesion("orden-a", "miembro").token(), anuncioA).getBody()).get("id").asText());
+            UUID convB = UUID.fromString(json.readTree(abrir(
+                    usuarioConSesion("orden-b", "miembro").token(), anuncioB).getBody()).get("id").asText());
+            java.time.Instant empate = java.time.Instant.parse("2026-02-01T00:00:00Z");
+            jdbc.update("UPDATE conversaciones SET fecha_actualizacion = ? WHERE id IN (?, ?)",
+                    java.time.OffsetDateTime.ofInstant(empate, java.time.ZoneOffset.UTC), convA, convB);
+
+            String esperada = jdbc.queryForObject(
+                    "SELECT id::text FROM conversaciones WHERE vendedor_id = ? "
+                            + "ORDER BY fecha_actualizacion DESC, id DESC LIMIT 1",
+                    String.class, vendedora.id());
+
+            assertThat(misConversaciones(vendedora.token()).get("datos").get(0).get("id").asText()).isEqualTo(esperada);
+        }
+
+        @Test
+        @DisplayName("Un anuncio dado de baja sigue en la conversación y su detalle responde 200 (R16)")
+        void anuncioNoVisibleSigueEnElItem() {
+            Sesion vendedora = usuarioConSesion("vendedora-baja-anuncio", "miembro", "Ana Pérez");
+            Sesion comprador = usuarioConSesion("comprador-baja-anuncio", "miembro", "Luis Gómez");
+            Sesion moderador = usuarioConSesion("moderador-baja-anuncio", "moderador");
+            String anuncioId = anuncioAprobado(vendedora, moderador, "Baja " + UUID.randomUUID());
+            String conversacionId = json.readTree(abrir(comprador.token(), anuncioId).getBody())
+                    .get("id").asText();
+            rest.exchange("/v1/anuncios/" + anuncioId, HttpMethod.DELETE,
+                    new HttpEntity<>(null, conSesion(vendedora.token())), String.class);
+
+            JsonNode item = misConversaciones(comprador.token()).get("datos").get(0);
+            ResponseEntity<String> detalle = rest.exchange("/v1/conversaciones/" + conversacionId, HttpMethod.GET,
+                    new HttpEntity<>(null, conSesion(comprador.token())), String.class);
+
+            assertThat(item.get("anuncio").get("id").asText()).isEqualTo(anuncioId);
+            assertThat(item.get("anuncio").get("estado").asText()).isEqualTo("eliminado");
+            assertThat(detalle.getStatusCode())
+                    .as("el historial sigue legible aunque el anuncio ya no se gestione")
+                    .isEqualTo(HttpStatus.OK);
+        }
+    }
+
+    @Nested
     @DisplayName("Guards (R9/R10/R16)")
     class Guards {
 

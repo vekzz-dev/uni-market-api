@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | **Verificado (2026-10-12)** |
-| HEAD | `mvn verify` EXIT=0 · **222 tests, 0 fallos** · cobertura de líneas **92 %** (gate ≥ 80 % activo) |
+| HEAD | `mvn verify` EXIT=0 · **232 tests, 0 fallos** · cobertura de líneas **92 %** (gate ≥ 80 % activo) |
 | Alcance | Los 20 criterios de aceptación del PRD §8, cada uno mapeado a su evidencia real en la suite |
 | Actualizaciones posteriores | 2026-10-13/14: contenerización completa (`Dockerfile` + `compose.yaml` con BD y API), perfiles `dev/prod` con guarda fail-fast de credenciales, CORS configurable por entorno, **traceId de correlación** (`X-Request-Id`) en cada log, BD de desarrollo en variante **alpine** (PG18) con migración collation-safe (dump → initdb musl → restore) y **runner de CI fijado** a `ubuntu-24.04`. 2026-10-21: se agrega el criterio 18 (R17, nombre público del vendedor, issue #2); los 17 criterios previos siguen verificados sin cambios |
 
@@ -24,7 +24,7 @@
 | 11 | Reset responde idéntico exista o no + rate limit | ✅ | `IdentityFlujoIntegrationTest` (202 idéntico, 429) |
 | 12 | Vendedor no modifica ajenos (403) ni ve ajenos en su panel | ✅ | `CatalogoFlujoIntegrationTest.editarAjenoYReset` + `AnuncioRepositoryTest.soloDelVendedor` |
 | 13 | Límites de imagen con status correcto y sin objetos subidos (5 pareadas/5 MB/avatar 2 MB/tipos) | ✅ | `CatalogoFlujoIntegrationTest.rechazosSinHuerfanos` (422 sin huérfanos) + `ServicioAnunciosTest` (firma/tamaño/cantidad) + `IdentityFlujoIntegrationTest` (avatar) + `DbSchemaVerificationTest` (CHECKs pareados) |
-| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn verify`: 222 tests, gate ≥ 80 % activo (92 %), `OpenApiContractTest` (estructura + sin claves duplicadas). El pipeline de GitHub Actions ejecuta este mismo comando sobre el runner fijado `ubuntu-24.04` |
+| 14 | Suite verde con gate de cobertura y contrato validado | ✅ | `mvn verify`: 232 tests, gate ≥ 80 % activo (92 %), `OpenApiContractTest` (estructura + sin claves duplicadas). El pipeline de GitHub Actions ejecuta este mismo comando sobre el runner fijado `ubuntu-24.04` |
 | 15 | Web y móvil consumen EXCLUSIVAMENTE el cliente generado | ➖ N/A en este repo | Los clientes viven en repos externos (decisión de alcance, PRD §7); este repo garantiza la fuente de verdad y su validación en el build |
 | 16 | Sin políticas RLS ni triggers en la BD | ✅ | `AceptacionFinalIntegrationTest.sinRlsNiTriggers` (`pg_policies`=0, `pg_trigger` no internos=0) + `DbSchemaVerificationTest` |
 | 17 | Apertura solo sobre anuncio visible con vendedor activo; envío con contraparte activa; historial previo legible | ✅ | `MensajeriaFlujoIntegrationTest.apertura/participacionYEnvio/flujoCompleto` |
@@ -36,6 +36,6 @@
 
 **19 de 20 criterios verificados con evidencia automatizada; 1 fuera de alcance de este repositorio por diseño (criterio 15)**. La entrega queda cerrada con:
 
-- `mvn verify` reproducible: 222 tests · 0 fallos · 92 % de líneas con el gate activo.
+- `mvn verify` reproducible: 232 tests · 0 fallos · 92 % de líneas con el gate activo.
 - Contrato OpenAPI validado en el build (estructura, `$ref`s y claves duplicadas).
 - Pendientes del SDD sin deudas abiertas: N3 y N8 resueltos; las notas restantes son decisiones conscientes (memoria del limiter en despliegue único; verificación real de R2 al desplegar).
