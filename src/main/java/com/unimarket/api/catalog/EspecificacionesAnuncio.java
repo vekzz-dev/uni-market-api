@@ -26,6 +26,16 @@ public final class EspecificacionesAnuncio {
                 cb.equal(raiz.get("estadoRevision"), EstadoRevision.aprobado));
     }
 
+    /**
+     * Excluye el borrado lógico (R1): la baja deja {@code estado='eliminado'} con la fila viva,
+     * así que toda vista de gestión —panel, lectura por id y cola de moderación— debe filtrarlo.
+     * Lo que necesita el historial (mensajería, R16) usa {@code detalleSinVisibilidad}, que no
+     * pasa por aquí.
+     */
+    public static Specification<Anuncio> noEliminado() {
+        return (raiz, consulta, cb) -> cb.notEqual(raiz.get("estado"), EstadoAnuncio.eliminado);
+    }
+
     /** Ownership (R7): "mis anuncios" jamás devuelve filas ajenas. */
     public static Specification<Anuncio> deVendedor(UUID vendedorId) {
         return (raiz, consulta, cb) -> cb.equal(raiz.get("vendedorId"), vendedorId);

@@ -86,7 +86,8 @@ public class ServicioRevision {
         int tamano = validarLimite(limite);
         int indice = pagina == null || pagina < 0 ? 0 : pagina;
         EstadoRevision filtro = estadoRevision == null ? EstadoRevision.pendiente : estadoRevision;
-        Specification<Anuncio> spec = (raiz, consulta, cb) -> cb.equal(raiz.get("estadoRevision"), filtro);
+        Specification<Anuncio> spec = EspecificacionesAnuncio.deRevision(filtro)
+                .and(EspecificacionesAnuncio.noEliminado());
         Page<Anuncio> resultado = anuncios.findAll(spec,
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.asc("fechaCreacion"), Sort.Order.asc("id"))));
         return new RespuestaColeccion<>(

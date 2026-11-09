@@ -114,6 +114,27 @@ class AnuncioRepositoryTest {
     }
 
     @Nested
+    @DisplayName("Borrado lógico (bug #5)")
+    class BorradoLogico {
+
+        @Test
+        @DisplayName("El predicado noEliminado deja fuera las filas dadas de baja")
+        void excluyeEliminados() {
+            UUID vendedor = vendedor("bajas");
+            Anuncio vivo = anuncios.saveAndFlush(anuncio(vendedor, vendedor, "Vivo", "10",
+                    EstadoAnuncio.disponible, EstadoRevision.pendiente));
+            Anuncio borrado = anuncios.saveAndFlush(anuncio(vendedor, vendedor, "Borrado", "10",
+                    EstadoAnuncio.eliminado, EstadoRevision.pendiente));
+
+            List<Anuncio> visiblesDelVendedor = anuncios.findAll(
+                    EspecificacionesAnuncio.deVendedor(vendedor).and(EspecificacionesAnuncio.noEliminado()));
+
+            assertThat(visiblesDelVendedor).extracting(Anuncio::getId).containsExactly(vivo.getId());
+            assertThat(visiblesDelVendedor).extracting(Anuncio::getId).doesNotContain(borrado.getId());
+        }
+    }
+
+    @Nested
     @DisplayName("Búsqueda con escape (O3)")
     class Busqueda {
 

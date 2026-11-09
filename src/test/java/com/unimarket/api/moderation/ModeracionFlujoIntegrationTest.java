@@ -124,6 +124,28 @@ class ModeracionFlujoIntegrationTest extends SoportePostgresIT {
     }
 
     @Nested
+    @DisplayName("Borrado lógico fuera de la cola (bug #5)")
+    class BorradoLogico {
+
+        @Test
+        @DisplayName("Un anuncio pendiente que el vendedor da de baja desaparece de la cola")
+        void colaExcluyeEliminados() {
+            Sesion vendedor = usuarioConSesion("vendedor-baja-cola", "miembro");
+            Sesion moderador = usuarioConSesion("moderador-cola", "moderador");
+            String id = crearAnuncio(vendedor.token(), "Se borra " + UUID.randomUUID());
+            assertThat(colaContiene(moderador.token(), id, "pendiente")).isTrue();
+
+            ResponseEntity<String> baja = rest.exchange("/v1/anuncios/" + id, HttpMethod.DELETE,
+                    new HttpEntity<>(null, conSesion(vendedor.token())), String.class);
+
+            assertThat(baja.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            assertThat(colaContiene(moderador.token(), id, "pendiente"))
+                    .as("no hay nada que moderar en un anuncio que ya no existe para el vendedor")
+                    .isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("Ciclo publicar → decidir → visible (R4/R5)")
     class CicloCompleto {
 

@@ -128,6 +128,7 @@ public class ServicioCatalogo {
     public DtosAnuncios.AnuncioPanel panelPropio(UUID vendedorId, UUID anuncioId) {
         Anuncio anuncio = anuncios
                 .findOne(EspecificacionesAnuncio.deVendedor(vendedorId)
+                        .and(EspecificacionesAnuncio.noEliminado())
                         .and((raiz, consulta, cb) -> cb.equal(raiz.get("id"), anuncioId)))
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
         return mapeador.panel(anuncio);
@@ -135,14 +136,16 @@ public class ServicioCatalogo {
 
     /**
      * Panel del vendedor: ownership como predicado (R7) + offset con total. El filtro por
-     * estado de revisión es aditivo y el total lo refleja (issue #3).
+     * estado de revisión es aditivo y el total lo refleja (issue #3). Los anuncios dados de
+     * baja quedan fuera del listado y del total (bug #5).
      */
     @Transactional(readOnly = true)
     public RespuestaColeccion<DtosAnuncios.AnuncioPanel> misAnuncios(
             UUID vendedorId, String estadoRevision, Integer pagina, Integer limite) {
         int tamano = validarLimite(limite);
         int indice = pagina == null || pagina < 0 ? 0 : pagina;
-        Specification<Anuncio> filtro = EspecificacionesAnuncio.deVendedor(vendedorId);
+        Specification<Anuncio> filtro = EspecificacionesAnuncio.deVendedor(vendedorId)
+                .and(EspecificacionesAnuncio.noEliminado());
         if (estadoRevision != null && !estadoRevision.isBlank()) {
             filtro = filtro.and(validarFiltro(estadoRevision).especificacion());
         }

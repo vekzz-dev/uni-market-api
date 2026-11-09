@@ -113,6 +113,12 @@ class PanelVendedorIntegrationTest extends SoportePostgresIT {
         assertThat(decidir(moderador, anuncioId, "retraer", "se retira").getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
+    private void darDeBaja(Sesion vendedor, String anuncioId) {
+        ResponseEntity<String> baja = rest.exchange("/v1/anuncios/" + anuncioId, HttpMethod.DELETE,
+                new HttpEntity<>(null, conSesion(vendedor.token())), String.class);
+        assertThat(baja.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
     private ResponseEntity<String> panelPorId(Sesion sesion, String anuncioId) {
         return rest.exchange("/v1/mis-anuncios/" + anuncioId, HttpMethod.GET,
                 new HttpEntity<>(null, conSesion(sesion.token())), String.class);
@@ -231,6 +237,38 @@ class PanelVendedorIntegrationTest extends SoportePostgresIT {
                     HttpMethod.GET, new HttpEntity<>(null, conSesion(vendedor.token())), String.class);
 
             assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Nested
+    @DisplayName("Borrado lógico fuera del panel (bug #5)")
+    class BorradoLogico {
+
+        @Test
+        @DisplayName("Un anuncio dado de baja no se lista y tampoco suma al total, con o sin filtro")
+        void eliminadosFueraDelPanelYDelTotal() {
+            Sesion vendedor = sesion("miembro");
+            String vivo = crearAnuncio(vendedor, "Vivo " + UUID.randomUUID());
+            String borrado = crearAnuncio(vendedor, "Borrado " + UUID.randomUUID());
+            darDeBaja(vendedor, borrado);
+
+            JsonNode panel = panel(vendedor, null);
+            JsonNode panelPendientes = panel(vendedor, "pendiente");
+
+            assertThat(ids(panel)).as("la baja es lógica, pero el panel solo gestiona lo vivo").containsExactly(vivo);
+            assertThat(panel.get("paginacion").get("total").asLong()).isEqualTo(1);
+            assertThat(ids(panelPendientes)).containsExactly(vivo);
+            assertThat(panelPendientes.get("paginacion").get("total").asLong()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Leer por id un anuncio dado de baja responde 404, como un inexistente")
+        void eliminadoPorIdEs404() {
+            Sesion vendedor = sesion("miembro");
+            String borrado = crearAnuncio(vendedor, "Baja id " + UUID.randomUUID());
+            darDeBaja(vendedor, borrado);
+
+            assertThat(panelPorId(vendedor, borrado).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
 
