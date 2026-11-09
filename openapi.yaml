@@ -1661,10 +1661,17 @@ components:
       allOf:
         - $ref: '#/components/schemas/ConversacionResumen'
         - type: object
-          required: [anuncio, noLeidos]
+          required: [anuncio, contraparteNombre, noLeidos]
           properties:
             anuncio:
               $ref: '#/components/schemas/AnuncioResumen'
+            contraparteNombre:
+              type: string
+              maxLength: 60
+              description: |
+                Nombre público del OTRO participante, resuelto según quién consulta (R18):
+                el comprador ve al vendedor y el vendedor al comprador. Sin nombre resoluble
+                publica `"Usuario"`, un genérico neutro que no insinúa un rol.
             noLeidos:
               type: integer
               description: Conteo explícito; ningún GET muta leido (PRD §5).
@@ -1675,6 +1682,12 @@ components:
           properties:
             anuncio:
               $ref: '#/components/schemas/AnuncioResumen'
+            contraparteNombre:
+              type: string
+              maxLength: 60
+              description: |
+                Nombre público del OTRO participante, resuelto según quién consulta (R18).
+                La lista resuelve los nombres de toda la página en una sola consulta.
             ultimoMensaje:
               type: object
               nullable: true

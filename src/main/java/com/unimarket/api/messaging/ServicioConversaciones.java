@@ -2,6 +2,7 @@ package com.unimarket.api.messaging;
 
 import com.unimarket.api.catalog.DtosAnuncios;
 import com.unimarket.api.catalog.ServicioCatalogo;
+import com.unimarket.api.identity.ServicioNombresPublicos;
 import com.unimarket.api.shared.error.EstructuraInvalidaException;
 import com.unimarket.api.shared.error.NoEncontradoException;
 import com.unimarket.api.shared.error.ProhibidoException;
@@ -20,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -38,6 +41,7 @@ public class ServicioConversaciones {
     private final MensajeRepository mensajes;
     private final ServicioCatalogo catalogo;
     private final EstadoUsuarioProvider estadoUsuarios;
+    private final ServicioNombresPublicos nombres;
     private final CursorCodec cursorCodec;
 
     public ServicioConversaciones(
@@ -45,11 +49,13 @@ public class ServicioConversaciones {
             MensajeRepository mensajes,
             ServicioCatalogo catalogo,
             EstadoUsuarioProvider estadoUsuarios,
+            ServicioNombresPublicos nombres,
             CursorCodec cursorCodec) {
         this.conversaciones = conversaciones;
         this.mensajes = mensajes;
         this.catalogo = catalogo;
         this.estadoUsuarios = estadoUsuarios;
+        this.nombres = nombres;
         this.cursorCodec = cursorCodec;
     }
 
@@ -93,9 +99,10 @@ public class ServicioConversaciones {
         Page<Conversacion> resultado = conversaciones.findAll(
                 EspecificacionesMensajeria.deParticipante(usuarioId),
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.desc("fechaActualizacion"), Sort.Order.desc("id"))));
-        return new RespuestaColeccion<>(
-                resultado.getContent().stream().map(conversacion -> item(conversacion, usuarioId)).toList(),
-                new PaginacionOffset(indice, tamano, resultado.getTotalElements(), resultado.getTotalPages()));
+        List<Conversacion> filas = resultado.getContent();
+        PaginacionOffset paginacion = new PaginacionOffset(
+                indice, tamano, resultado.getTotalElements(), resultado.getTotalPages());
+        return new RespuestaColeccion<>(items(filas, usuarioId), paginacion);
     }
 
     /** Detalle para participantes (403 para el resto, R10). */
@@ -110,6 +117,8 @@ public class ServicioConversaciones {
                 conversacion.getFechaCreacion(),
                 conversacion.getFechaActualizacion(),
                 catalogo.detalleSinVisibilidad(conversacion.getAnuncioId()),
+                nombres.nombrePublicoDe(contraparte(conversacion, usuarioId),
+                        ServicioNombresPublicos.SIN_NOMBRE_USUARIO),
                 mensajes.countByConversacionIdAndLeidoFalseAndRemitenteIdNot(conversacionId, usuarioId));
     }
 
@@ -167,19 +176,48 @@ public class ServicioConversaciones {
         mensajes.marcarLeidos(conversacionId, usuarioId);
     }
 
-    private DtosMensajeria.ConversacionItem item(Conversacion conversacion, UUID usuarioId) {
-        return new DtosMensajeria.ConversacionItem(
-                conversacion.getId(),
-                conversacion.getAnuncioId(),
-                conversacion.getCompradorId(),
-                conversacion.getVendedorId(),
-                conversacion.getFechaCreacion(),
-                conversacion.getFechaActualizacion(),
-                catalogo.detalleSinVisibilidad(conversacion.getAnuncioId()),
-                mensajes.findTopByConversacionIdOrderByFechaCreacionDescIdDesc(conversacion.getId())
-                        .map(DtosMensajeria.UltimoMensaje::de)
-                        .orElse(null),
-                mensajes.countByConversacionIdAndLeidoFalseAndRemitenteIdNot(conversacion.getId(), usuarioId));
+    /**
+     * Arma la página con consultas en LOTE: anuncios, nombres, últimos mensajes y no leídos
+     * se resuelven una vez por página. Antes eran hasta cinco consultas por fila, y el panel
+     * paginado era el peor caso del módulo.
+     */
+    private List<DtosMensajeria.ConversacionItem> items(List<Conversacion> filas, UUID usuarioId) {
+        if (filas.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> ids = filas.stream().map(Conversacion::getId).toList();
+        Map<UUID, DtosAnuncios.AnuncioDetalle> anuncios = catalogo.detallesSinVisibilidad(
+                filas.stream().map(Conversacion::getAnuncioId).toList());
+        Map<UUID, DtosMensajeria.UltimoMensaje> ultimos = new LinkedHashMap<>();
+        mensajes.ultimosPorConversacion(ids)
+                .forEach(mensaje -> ultimos.put(mensaje.getConversacionId(), DtosMensajeria.UltimoMensaje.de(mensaje)));
+        Map<UUID, Long> noLeidos = new LinkedHashMap<>();
+        mensajes.noLeidosPorConversacion(ids, usuarioId)
+                .forEach(conteo -> noLeidos.put(conteo.getConversacionId(), conteo.getTotal()));
+        Map<UUID, String> contrapartes = nombres.nombresPublicosDe(
+                filas.stream().map(fila -> contraparte(fila, usuarioId)).toList(),
+                ServicioNombresPublicos.SIN_NOMBRE_USUARIO);
+
+        return filas.stream()
+                .map(conversacion -> new DtosMensajeria.ConversacionItem(
+                        conversacion.getId(),
+                        conversacion.getAnuncioId(),
+                        conversacion.getCompradorId(),
+                        conversacion.getVendedorId(),
+                        conversacion.getFechaCreacion(),
+                        conversacion.getFechaActualizacion(),
+                        anuncios.get(conversacion.getAnuncioId()),
+                        contrapartes.get(contraparte(conversacion, usuarioId)),
+                        ultimos.get(conversacion.getId()),
+                        noLeidos.getOrDefault(conversacion.getId(), 0L)))
+                .toList();
+    }
+
+    /** El "otro" participante de la conversación para quien consulta (R18). */
+    private static UUID contraparte(Conversacion conversacion, UUID usuarioId) {
+        return conversacion.getCompradorId().equals(usuarioId)
+                ? conversacion.getVendedorId()
+                : conversacion.getCompradorId();
     }
 
     /** 404 si no existe; 403 si no es comprador ni vendedor (R10). */

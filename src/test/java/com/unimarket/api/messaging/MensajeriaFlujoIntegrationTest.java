@@ -1,6 +1,9 @@
 package com.unimarket.api.messaging;
 
 import com.unimarket.api.identity.SoportePostgresIT;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,15 +50,22 @@ class MensajeriaFlujoIntegrationTest extends SoportePostgresIT {
     @Autowired
     private PasswordEncoder encoder;
 
+    @Autowired
+    private EntityManagerFactory emf;
+
     private record Sesion(UUID id, String token) {
     }
 
     private Sesion usuarioConSesion(String etiqueta, String rol) {
+        return usuarioConSesion(etiqueta, rol, "Usuario " + etiqueta);
+    }
+
+    private Sesion usuarioConSesion(String etiqueta, String rol, String nombre) {
         String email = etiqueta.toLowerCase() + "-" + UUID.randomUUID() + "@uni.edu";
         UUID id = jdbc.queryForObject(
                 "INSERT INTO usuarios (email, nombre, hash_contrasena, fecha_verificacion_email, rol) "
                         + "VALUES (?, ?, ?, now(), ?) RETURNING id",
-                UUID.class, email, "Usuario " + etiqueta, encoder.encode("secreta123"), rol);
+                UUID.class, email, nombre, encoder.encode("secreta123"), rol);
         ResponseEntity<String> login = rest.postForEntity(
                 "/v1/auth/login", Map.of("email", email, "contrasena", "secreta123"), String.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -190,6 +200,81 @@ class MensajeriaFlujoIntegrationTest extends SoportePostgresIT {
             assertThat(segunda.get("datos")).hasSize(1);
             assertThat(segunda.get("datos").get(0).get("texto").asText()).isEqualTo("primero");
             assertThat(segunda.get("paginacion").get("cursorSiguiente").isNull()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Nombre de la contraparte (R18)")
+    class NombreContraparte {
+
+        private int sentenciasDelPanel(Sesion sesion) {
+            Statistics estadisticas = emf.unwrap(SessionFactory.class).getStatistics();
+            estadisticas.setStatisticsEnabled(true);
+            estadisticas.clear();
+            misConversaciones(sesion.token());
+            return (int) estadisticas.getPrepareStatementCount();
+        }
+
+        @Test
+        @DisplayName("El comprador ve el nombre del vendedor y el vendedor el del comprador, en lista y detalle")
+        void cadaParticipanteVeALaContraparte() {
+            Sesion vendedora = usuarioConSesion("vendedora-nombre", "miembro", "Ana María Pérez Gómez");
+            Sesion comprador = usuarioConSesion("comprador-nombre", "miembro", "Luis Gómez");
+            Sesion moderador = usuarioConSesion("moderador-nombre", "moderador");
+
+            String anuncioId = anuncioAprobado(vendedora, moderador, "Contraparte " + UUID.randomUUID());
+            String conversacionId = json.readTree(abrir(comprador.token(), anuncioId).getBody())
+                    .get("id").asText();
+
+            JsonNode listaComprador = misConversaciones(comprador.token()).get("datos").get(0);
+            JsonNode listaVendedora = misConversaciones(vendedora.token()).get("datos").get(0);
+            JsonNode detalleComprador = json.readTree(rest.exchange("/v1/conversaciones/" + conversacionId,
+                    HttpMethod.GET, new HttpEntity<>(null, conSesion(comprador.token())), String.class).getBody());
+            JsonNode detalleVendedora = json.readTree(rest.exchange("/v1/conversaciones/" + conversacionId,
+                    HttpMethod.GET, new HttpEntity<>(null, conSesion(vendedora.token())), String.class).getBody());
+
+            assertThat(listaComprador.get("contraparteNombre").asText())
+                    .as("el comprador ve a la vendedora").isEqualTo("Ana G.");
+            assertThat(listaVendedora.get("contraparteNombre").asText())
+                    .as("la vendedora ve al comprador").isEqualTo("Luis G.");
+            assertThat(detalleComprador.get("contraparteNombre").asText()).isEqualTo("Ana G.");
+            assertThat(detalleVendedora.get("contraparteNombre").asText()).isEqualTo("Luis G.");
+        }
+
+        @Test
+        @DisplayName("Contraparte dada de baja → genérico neutro \"Usuario\", no \"Vendedor\"")
+        void contraparteNoResolubleEsNeutra() {
+            Sesion vendedora = usuarioConSesion("vendedora-baja", "miembro", "Ana Pérez");
+            Sesion comprador = usuarioConSesion("comprador-baja", "miembro", "Luis Gómez");
+            Sesion moderador = usuarioConSesion("moderador-baja", "moderador");
+            String anuncioId = anuncioAprobado(vendedora, moderador, "Baja " + UUID.randomUUID());
+            abrir(comprador.token(), anuncioId);
+            jdbc.update("UPDATE usuarios SET fecha_eliminacion = now() WHERE id = ?", comprador.id());
+
+            assertThat(misConversaciones(vendedora.token()).get("datos").get(0).get("contraparteNombre").asText())
+                    .as("un genérico que no insinúa un rol ni revela el estado de la cuenta")
+                    .isEqualTo("Usuario");
+        }
+
+        @Test
+        @DisplayName("El coste de la página no crece con el número de conversaciones")
+        void costeConstantePorPagina() {
+            Sesion vendedora = usuarioConSesion("vendedora-coste", "miembro", "Ana Pérez");
+            Sesion moderador = usuarioConSesion("moderador-coste", "moderador");
+            String anuncioId = anuncioAprobado(vendedora, moderador, "Coste " + UUID.randomUUID());
+            abrir(usuarioConSesion("comprador-1", "miembro").token(), anuncioId);
+
+            int conUnaConversacion = sentenciasDelPanel(vendedora);
+
+            for (int i = 2; i <= 4; i++) {
+                abrir(usuarioConSesion("comprador-" + i, "miembro").token(), anuncioId);
+            }
+            int conCuatroConversaciones = sentenciasDelPanel(vendedora);
+
+            assertThat(conCuatroConversaciones)
+                    .as("la página cuesta lo mismo con 1 que con 4 conversaciones: %d vs %d",
+                            conUnaConversacion, conCuatroConversaciones)
+                    .isEqualTo(conUnaConversacion);
         }
     }
 

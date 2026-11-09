@@ -43,7 +43,11 @@ public final class DtosMensajeria {
         }
     }
 
-    /** Ítem del panel "mis conversaciones" (openapi: resumen + anuncio + ultimoMensaje + noLeidos). */
+    /**
+     * Ítem del panel "mis conversaciones" (openapi: resumen + anuncio + ultimoMensaje + noLeidos).
+     * {@code contraparteNombre} es el nombre público del OTRO participante, resuelto según quién
+     * consulta (R18): el comprador ve al vendedor y el vendedor al comprador.
+     */
     public record ConversacionItem(
             UUID id,
             UUID anuncioId,
@@ -52,6 +56,7 @@ public final class DtosMensajeria {
             Instant fechaCreacion,
             Instant fechaActualizacion,
             DtosAnuncios.AnuncioDetalle anuncio,
+            String contraparteNombre,
             UltimoMensaje ultimoMensaje,
             long noLeidos) {
     }
@@ -72,6 +77,7 @@ public final class DtosMensajeria {
             Instant fechaCreacion,
             Instant fechaActualizacion,
             DtosAnuncios.AnuncioDetalle anuncio,
+            String contraparteNombre,
             long noLeidos) {
     }
 

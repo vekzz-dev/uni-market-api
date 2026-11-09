@@ -13,8 +13,14 @@ import java.util.Locale;
  */
 public final class NombresPublicos {
 
-    /** Texto publicado cuando no hay nombre resoluble; no filtra el estado de la cuenta. */
+    /** Texto publicado cuando no hay nombre resoluble en un anuncio; no filtra el estado de la cuenta. */
     public static final String SIN_NOMBRE = "Vendedor";
+
+    /**
+     * Genérico de una contraparte de mensajería cuyo nombre no es resoluble (R18). Es neutro
+     * a propósito: {@code "Vendedor"} sería falso cuando quien falta es el comprador.
+     */
+    public static final String SIN_NOMBRE_USUARIO = "Usuario";
 
     /** Techo del wire: {@code vendedorNombre} declara {@code maxLength: 60} en el contrato. */
     static final int MAXIMO = 60;

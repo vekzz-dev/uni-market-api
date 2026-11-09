@@ -16,7 +16,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -132,6 +137,32 @@ public class ServicioCatalogo {
                         .and((raiz, consulta, cb) -> cb.equal(raiz.get("id"), anuncioId)))
                 .orElseThrow(() -> new NoEncontradoException("El anuncio no existe."));
         return mapeador.panel(anuncio);
+    }
+
+    /**
+     * Variante en lote de {@link #detalleSinVisibilidad} para la lista de conversaciones:
+     * una consulta de anuncios y una de nombres para toda la página, en vez de una por fila.
+     * Solo consumo interno entre módulos (R16); jamás se expone por una ruta pública.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, DtosAnuncios.AnuncioDetalle> detallesSinVisibilidad(Collection<UUID> anuncioIds) {
+        LinkedHashSet<UUID> distintos = anuncioIds.stream()
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (distintos.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Anuncio> porId = new LinkedHashMap<>();
+        anuncios.findAllById(distintos).forEach(anuncio -> porId.put(anuncio.getId(), anuncio));
+        distintos.forEach(id -> {
+            if (!porId.containsKey(id)) {
+                throw new NoEncontradoException("El anuncio no existe.");
+            }
+        });
+        Map<UUID, DtosAnuncios.AnuncioDetalle> detalles = new LinkedHashMap<>();
+        mapeador.detalles(List.copyOf(porId.values()))
+                .forEach(detalle -> detalles.put(detalle.id(), detalle));
+        return detalles;
     }
 
     /**

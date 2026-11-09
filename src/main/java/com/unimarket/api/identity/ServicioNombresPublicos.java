@@ -29,6 +29,9 @@ public class ServicioNombresPublicos {
      */
     public static final String SIN_NOMBRE = NombresPublicos.SIN_NOMBRE;
 
+    /** Genérico neutro para una contraparte de mensajería (R18): no insinúa un rol. */
+    public static final String SIN_NOMBRE_USUARIO = NombresPublicos.SIN_NOMBRE_USUARIO;
+
     private final UsuarioRepository usuarios;
 
     public ServicioNombresPublicos(UsuarioRepository usuarios) {
@@ -42,13 +45,19 @@ public class ServicioNombresPublicos {
      */
     @Transactional(readOnly = true)
     public String nombrePublicoDe(UUID usuarioId) {
+        return nombrePublicoDe(usuarioId, SIN_NOMBRE);
+    }
+
+    /** Variante con genérico propio, para vistas donde el rol del otro no está fijado (R18). */
+    @Transactional(readOnly = true)
+    public String nombrePublicoDe(UUID usuarioId, String generico) {
         if (usuarioId == null) {
-            return SIN_NOMBRE;
+            return generico;
         }
         return usuarios.findById(usuarioId)
                 .filter(Usuario::activa)
                 .map(usuario -> NombresPublicos.publico(usuario.getNombre()))
-                .orElse(SIN_NOMBRE);
+                .orElse(generico);
     }
 
     /**
@@ -59,6 +68,12 @@ public class ServicioNombresPublicos {
      */
     @Transactional(readOnly = true)
     public Map<UUID, String> nombresPublicosDe(Collection<UUID> vendedorIds) {
+        return nombresPublicosDe(vendedorIds, SIN_NOMBRE);
+    }
+
+    /** Variante con genérico propio: una entrada por id pedido, también para los no resolubles. */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> nombresPublicosDe(Collection<UUID> vendedorIds, String generico) {
         LinkedHashSet<UUID> distintos = new LinkedHashSet<>();
         if (vendedorIds != null) {
             vendedorIds.stream().filter(Objects::nonNull).forEach(distintos::add);
@@ -67,7 +82,7 @@ public class ServicioNombresPublicos {
             return Map.of();
         }
         Map<UUID, String> nombres = new LinkedHashMap<>();
-        distintos.forEach(id -> nombres.put(id, SIN_NOMBRE));
+        distintos.forEach(id -> nombres.put(id, generico));
         usuarios.findAllById(distintos).stream()
                 .filter(Usuario::activa)
                 .forEach(usuario -> nombres.put(usuario.getId(), NombresPublicos.publico(usuario.getNombre())));

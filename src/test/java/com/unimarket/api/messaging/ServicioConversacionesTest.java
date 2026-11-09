@@ -53,13 +53,16 @@ class ServicioConversacionesTest {
     @Mock
     private EstadoUsuarioProvider estadoUsuarios;
 
+    @Mock
+    private com.unimarket.api.identity.ServicioNombresPublicos nombres;
+
     private ServicioConversaciones servicio;
 
     @BeforeEach
     void preparar() {
         when(conversaciones.saveAndFlush(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
         when(mensajes.saveAndFlush(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
-        servicio = new ServicioConversaciones(conversaciones, mensajes, catalogo, estadoUsuarios,
+        servicio = new ServicioConversaciones(conversaciones, mensajes, catalogo, estadoUsuarios, nombres,
                 new CursorCodec(new ObjectMapper()));
     }
 

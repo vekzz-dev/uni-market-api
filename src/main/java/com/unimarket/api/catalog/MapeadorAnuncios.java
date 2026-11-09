@@ -32,6 +32,15 @@ class MapeadorAnuncios {
                 .toList();
     }
 
+    /** Variante en lote para la lista de conversaciones: N anuncios ⇒ 1 consulta de nombres. */
+    List<DtosAnuncios.AnuncioDetalle> detalles(List<Anuncio> anuncios) {
+        Map<UUID, String> porVendedor = nombres.nombresPublicosDe(
+                anuncios.stream().map(Anuncio::getVendedorId).toList());
+        return anuncios.stream()
+                .map(anuncio -> DtosAnuncios.AnuncioDetalle.de(anuncio, nombre(porVendedor, anuncio)))
+                .toList();
+    }
+
     DtosAnuncios.AnuncioDetalle detalle(Anuncio anuncio) {
         return DtosAnuncios.AnuncioDetalle.de(anuncio, nombres.nombrePublicoDe(anuncio.getVendedorId()));
     }
