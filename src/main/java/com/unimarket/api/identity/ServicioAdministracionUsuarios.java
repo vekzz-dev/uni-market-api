@@ -54,10 +54,10 @@ public class ServicioAdministracionUsuarios {
         if (rol != null) {
             filtro = filtro.and((raiz, consulta, cb) -> cb.equal(raiz.get("rol"), rol));
         }
+        if (q != null && q.length() > BUSQUEDA_MAXIMA) {
+            throw new EstructuraInvalidaException("El parámetro 'q' admite hasta 200 caracteres.");
+        }
         if (q != null && !q.isBlank()) {
-            if (q.length() > BUSQUEDA_MAXIMA) {
-                throw new EstructuraInvalidaException("El parámetro 'q' admite hasta 200 caracteres.");
-            }
             String patron = PatronesLike.contiene(q);
             filtro = filtro.and((raiz, consulta, cb) -> cb.or(
                     cb.like(cb.lower(raiz.get("nombre")), patron, PatronesLike.ESCAPE),

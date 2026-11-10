@@ -121,7 +121,7 @@ El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en In
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**240 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**241 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 
