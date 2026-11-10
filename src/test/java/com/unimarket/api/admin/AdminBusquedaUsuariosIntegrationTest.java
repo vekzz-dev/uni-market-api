@@ -188,6 +188,6 @@ class AdminBusquedaUsuariosIntegrationTest extends SoportePostgresIT {
                 .contains("USING gin").contains("lower").contains("email").contains("gin_trgm_ops"));
         assertThat(jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class))
-                .containsExactly("1", "2", "3", "4", "5");
+                .containsExactly("1", "2", "3", "4", "5", "6");
     }
 }

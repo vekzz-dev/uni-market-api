@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @Tag("integration")
-@DisplayName("Esquema de BD: Flyway V1–V5 sobre PostgreSQL 18 (Testcontainers)")
+@DisplayName("Esquema de BD: Flyway V1–V6 sobre PostgreSQL 18 (Testcontainers)")
 class DbSchemaVerificationTest {
 
     /** Las 8 tablas del DBDD §1: 5 de negocio + 3 de tokens. */
@@ -126,13 +126,13 @@ class DbSchemaVerificationTest {
         }
 
         @Test
-        @DisplayName("Flyway aplica V1 a V5 desde la configuración de la aplicación")
-        void flyway_shouldApplyFiveMigrations_whenContextStarts() {
+        @DisplayName("Flyway aplica V1 a V6 desde la configuración de la aplicación")
+        void flyway_shouldApplySixMigrations_whenContextStarts() {
             List<String> versiones = jdbcTemplate.queryForList(
                     "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                     String.class);
 
-            assertThat(versiones).containsExactly("1", "2", "3", "4", "5");
+            assertThat(versiones).containsExactly("1", "2", "3", "4", "5", "6");
         }
 
         @Test
@@ -154,6 +154,21 @@ class DbSchemaVerificationTest {
     @Nested
     @DisplayName("Índices (§3.1)")
     class Indices {
+
+        @Test
+        @DisplayName("Todos los índices trigram son funcionales: su expresión es lower(columna)")
+        void indicesTrigram_shouldMatchTheQueryExpression() {
+            List<String> definiciones = jdbcTemplate.queryForList(
+                    "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname IN "
+                            + "('idx_anuncios_nombre_trgm', 'idx_anuncios_descripcion_trgm', "
+                            + "'idx_usuarios_nombre_trgm', 'idx_usuarios_email_trgm')", String.class);
+
+            assertThat(definiciones)
+                    .as("las búsquedas consultan lower(columna): un índice sobre la columna desnuda no las sirve")
+                    .hasSize(4)
+                    .allSatisfy(definicion -> assertThat(definicion)
+                            .contains("USING gin").contains("gin_trgm_ops").contains("lower("));
+        }
 
         @Test
         @DisplayName("Los 18 índices nombrados existen en pg_indexes (13 de V1 + 3 de V3 + 2 de V5)")

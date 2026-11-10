@@ -4,7 +4,7 @@ Documento autónomo: describe por completo el esquema de datos de **Uni Market**
 
 | Campo | Valor |
 |---|---|
-| Estado | Aprobado — implementado en V1–V5 y verificado contra PostgreSQL 18 |
+| Estado | Aprobado — implementado en V1–V6 y verificado contra PostgreSQL 18 |
 | Última actualización | 2026-10-14 |
 | Fecha | 2026-10-09 |
 | Motor / migraciones | PostgreSQL 18 (última versión mayor vigente; PostgreSQL no publica ediciones "LTS": soporte de 5 años por versión mayor); Flyway (versionadas, forward-only) |
@@ -145,8 +145,8 @@ No declara `fecha_actualizacion` (los mensajes son inmutables).
 | `idx_anuncios_categoria` | `anuncios(categoria_id)` | Filtro de catálogo por categoría |
 | `idx_anuncios_estado_revision` | `anuncios(estado_revision)` | Moderación: listar pendientes |
 | `idx_anuncios_publicacion` | `anuncios(estado, estado_revision, fecha_creacion DESC, id DESC)` | Catálogo público con `ORDER BY fecha_creacion DESC`; el `id` final desempata timestamps iguales (cursor compuesto) |
-| `idx_anuncios_nombre_trgm` | GIN sobre `anuncios(nombre)` con `pg_trgm` | Búsqueda `ILIKE '%término%'` |
-| `idx_anuncios_descripcion_trgm` | GIN sobre `anuncios(descripcion)` con `pg_trgm` | Búsqueda `ILIKE '%término%'` |
+| `idx_anuncios_nombre_trgm` | GIN sobre `anuncios(lower(nombre))` con `pg_trgm` | Búsqueda del catálogo (`lower(nombre) LIKE '%término%'`); funcional, la expresión debe coincidir con la consulta |
+| `idx_anuncios_descripcion_trgm` | GIN sobre `anuncios(lower(descripcion))` con `pg_trgm` | Búsqueda del catálogo en la descripción |
 | `idx_conversaciones_comprador` | `conversaciones(comprador_id, fecha_actualizacion DESC)` | "Mis conversaciones" como comprador, ordenadas por actividad |
 | `idx_conversaciones_vendedor` | `conversaciones(vendedor_id, fecha_actualizacion DESC)` | "Mis conversaciones" como vendedor, ordenadas por actividad |
 | `idx_mensajes_conversacion_creado` | `mensajes(conversacion_id, fecha_creacion, id)` | Historial de una conversación ordenado; el `id` final desempata timestamps iguales (cursor compuesto) |
@@ -285,9 +285,9 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | Convención | Regla |
 |---|---|
 | Herramienta y nomenclatura | Flyway, integrada en el arranque de la aplicación backend (Spring Boot + Spring Data). Migraciones versionadas `V{n}__descripcion.sql` (doble guion bajo). |
-| Orden de aplicación | `V1` → `V2` → `V3` → `V4` → `V5`, estrictamente secuencial. |
+| Orden de aplicación | `V1` → `V2` → `V3` → `V4` → `V5` → `V6`, estrictamente secuencial. |
 | Inmutabilidad (forward-only) | Una migración aplicada NUNCA se edita: las correcciones se expresan como una migración nueva `V{n}` con número superior. |
-| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. |
+| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. `V6__indices_trgm_expresion_catalogo.sql`: recrea los dos GIN del catálogo sobre `lower(...)`, la expresión que realmente consulta la búsqueda. |
 | Seeds idempotentes | El seed usa `INSERT ... ON CONFLICT (nombre) DO NOTHING`: re-ejecutarlo no duplica categorías y el conteo se mantiene en 6. |
-| Reproducibilidad | El esquema completo se produce aplicando `V1` a `V5` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
+| Reproducibilidad | El esquema completo se produce aplicando `V1` a `V6` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
 | Verificación | Tras la aplicación: 8 tablas presentes, 18 índices en `pg_indexes` (13 de negocio + 2 de búsqueda + 3 de tokens), los 15 CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |
