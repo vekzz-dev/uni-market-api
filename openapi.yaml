@@ -984,14 +984,16 @@ paths:
       operationId: listarUsuarios
       summary: Lista usuarios (admin)
       description: |
-        Requiere rol `admin`. Filtro por `rol` (índice parcial solo activos);
-        offset + total. Nunca incluye cuentas dadas de baja (R1, R15). El panel
-        nunca borra usuarios físicamente ni escribe `fechaEliminacion`.
+        Requiere rol `admin`. Filtro por `rol` (índice parcial solo activos) y por texto
+        en nombre o email (issue #7, con escape de comodines); offset + total del filtro.
+        Nunca incluye cuentas dadas de baja (R1, R15). El panel nunca borra usuarios
+        físicamente ni escribe `fechaEliminacion`.
       parameters:
         - name: rol
           in: query
           schema:
             $ref: '#/components/schemas/Rol'
+        - $ref: '#/components/parameters/BusquedaUsuarios'
         - $ref: '#/components/parameters/Pagina'
         - $ref: '#/components/parameters/Limite'
       responses:
@@ -1122,6 +1124,17 @@ components:
       name: q
       in: query
       description: Búsqueda por texto en nombre y descripción con escape de comodines `%`, `_`, `\`.
+      schema:
+        type: string
+        maxLength: 200
+    BusquedaUsuarios:
+      name: q
+      in: query
+      required: false
+      description: |
+        Búsqueda aditiva en `nombre` y `email`, case-insensitive y con escape de comodines
+        `%`, `_`, `\`. Se combina con `rol`; sin el parámetro el listado no cambia. Más de
+        200 caracteres → `400`.
       schema:
         type: string
         maxLength: 200

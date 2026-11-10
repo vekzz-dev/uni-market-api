@@ -7,6 +7,7 @@ import com.unimarket.api.shared.error.ReglaDeNegocioException;
 import com.unimarket.api.shared.pagination.PaginacionOffset;
 import com.unimarket.api.shared.pagination.RespuestaColeccion;
 import com.unimarket.api.shared.security.Rol;
+import com.unimarket.api.shared.texto.PatronesLike;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -30,20 +31,37 @@ public class ServicioAdministracionUsuarios {
     static final int LIMITE_DEFECTO = 20;
     static final int LIMITE_MAXIMO = 100;
 
+    /** Techo del parámetro de búsqueda: mismo criterio que el catálogo (400 si se excede). */
+    static final int BUSQUEDA_MAXIMA = 200;
+
     private final UsuarioRepository usuarios;
 
     public ServicioAdministracionUsuarios(UsuarioRepository usuarios) {
         this.usuarios = usuarios;
     }
 
-    /** Listado filtrable por rol; excluye dadas de baja (R15) y ordena por alta reciente. */
+    /**
+     * Listado filtrable por rol y por texto; excluye dadas de baja (R15) y ordena por alta
+     * reciente. {@code q} busca en nombre y email con escape de comodines (issue #7) y se
+     * compone con el rol: los dos filtros aplican a la vez.
+     */
     @Transactional(readOnly = true)
-    public RespuestaColeccion<UsuarioAdminRespuesta> listar(Rol rol, Integer pagina, Integer limite) {
+    public RespuestaColeccion<UsuarioAdminRespuesta> listar(
+            Rol rol, String q, Integer pagina, Integer limite) {
         int tamano = validarLimite(limite);
         int indice = pagina == null || pagina < 0 ? 0 : pagina;
         Specification<Usuario> filtro = (raiz, consulta, cb) -> cb.isNull(raiz.get("fechaEliminacion"));
         if (rol != null) {
             filtro = filtro.and((raiz, consulta, cb) -> cb.equal(raiz.get("rol"), rol));
+        }
+        if (q != null && !q.isBlank()) {
+            if (q.length() > BUSQUEDA_MAXIMA) {
+                throw new EstructuraInvalidaException("El parámetro 'q' admite hasta 200 caracteres.");
+            }
+            String patron = PatronesLike.contiene(q);
+            filtro = filtro.and((raiz, consulta, cb) -> cb.or(
+                    cb.like(cb.lower(raiz.get("nombre")), patron, PatronesLike.ESCAPE),
+                    cb.like(cb.lower(raiz.get("email")), patron, PatronesLike.ESCAPE)));
         }
         Page<Usuario> resultado = usuarios.findAll(filtro,
                 PageRequest.of(indice, tamano, Sort.by(Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id"))));

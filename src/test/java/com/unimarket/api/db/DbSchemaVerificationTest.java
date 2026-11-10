@@ -34,13 +34,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * contenedor mediante {@code @ServiceConnection} (sin sustitutos en memoria: PRD §6).
  *
  * <p>Se verifican los objetos POR NOMBRE. En {@code pg_indexes} convive un número mayor
- * de índices (los de PK y de constraints UNIQUE no forman parte de los 16 de §3.1), por
+ * de índices (los de PK y de constraints UNIQUE no forman parte de los 18 de §3.1), por
  * eso no se assertion-a un conteo total de índices.
  */
 @SpringBootTest
 @Testcontainers
 @Tag("integration")
-@DisplayName("Esquema de BD: Flyway V1–V4 sobre PostgreSQL 18 (Testcontainers)")
+@DisplayName("Esquema de BD: Flyway V1–V5 sobre PostgreSQL 18 (Testcontainers)")
 class DbSchemaVerificationTest {
 
     /** Las 8 tablas del DBDD §1: 5 de negocio + 3 de tokens. */
@@ -54,7 +54,7 @@ class DbSchemaVerificationTest {
             "tokens_restablecimiento_contrasena",
             "tokens_refresh");
 
-    /** Los 16 índices nombrados del DBDD §3.1: 13 en V1 + 3 parciales de tokens en V3. */
+    /** Los 18 índices nombrados del DBDD §3.1: 13 en V1, 3 parciales de tokens en V3 y 2 trigram en V5. */
     private static final List<String> INDICES_ESPERADOS = List.of(
             "idx_anuncios_vendedor",
             "idx_anuncios_categoria",
@@ -71,7 +71,9 @@ class DbSchemaVerificationTest {
             "idx_categorias_orden",
             "ux_tokens_email_activos",
             "ux_tokens_reset_activos",
-            "ux_tokens_refresh_activos");
+            "ux_tokens_refresh_activos",
+            "idx_usuarios_nombre_trgm",
+            "idx_usuarios_email_trgm");
 
     /**
      * Los 15 CHECKs nombrados del DBDD §3.2 como pares {@code tabla.nombre}: son 16 filas
@@ -124,13 +126,13 @@ class DbSchemaVerificationTest {
         }
 
         @Test
-        @DisplayName("Flyway aplica V1 a V4 desde la configuración de la aplicación")
-        void flyway_shouldApplyFourMigrations_whenContextStarts() {
+        @DisplayName("Flyway aplica V1 a V5 desde la configuración de la aplicación")
+        void flyway_shouldApplyFiveMigrations_whenContextStarts() {
             List<String> versiones = jdbcTemplate.queryForList(
                     "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                     String.class);
 
-            assertThat(versiones).containsExactly("1", "2", "3", "4");
+            assertThat(versiones).containsExactly("1", "2", "3", "4", "5");
         }
 
         @Test
@@ -154,7 +156,7 @@ class DbSchemaVerificationTest {
     class Indices {
 
         @Test
-        @DisplayName("Los 16 índices nombrados existen en pg_indexes (13 de V1 + 3 de V3)")
+        @DisplayName("Los 18 índices nombrados existen en pg_indexes (13 de V1 + 3 de V3 + 2 de V5)")
         void indices_shouldExistTheSixteenNamed_whenMigrationsApplied() {
             List<String> existentes = jdbcTemplate.queryForList(
                     "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'", String.class);

@@ -121,7 +121,7 @@ El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en In
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**222 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**240 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 
@@ -155,7 +155,7 @@ Ejecuta la suite completa (**222 tests**) contra **PostgreSQL 18 real** (Testcon
 
 ```
 src/main/java/com/unimarket/api/   shared · identity · catalog · moderation · messaging · admin · notifications · media
-src/main/resources/db/migration/   Flyway V1–V4 (esquema, seed, tokens, procedencia del rechazo)
+src/main/resources/db/migration/   Flyway V1–V5 (esquema, seed, tokens, procedencia del rechazo, índices de búsqueda)
 src/test/java/                     unit + slices + integración Testcontainers
 docs/                              PRD · DBDD · SDD (fuente de verdad del diseño)
 odd/tasks/                         registro de trabajo por feature (con evidencia)

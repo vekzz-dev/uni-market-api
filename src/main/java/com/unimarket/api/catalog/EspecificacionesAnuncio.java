@@ -1,5 +1,6 @@
 package com.unimarket.api.catalog;
 
+import com.unimarket.api.shared.texto.PatronesLike;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -12,9 +13,6 @@ import java.util.UUID;
  * el filtro vive aquí, no como parámetro opcional del servicio.
  */
 public final class EspecificacionesAnuncio {
-
-    /** Carácter de escape para {@code LIKE}: el usuario busca literal, no comodines. */
-    static final char ESCAPE = '\\';
 
     private EspecificacionesAnuncio() {
     }
@@ -61,10 +59,10 @@ public final class EspecificacionesAnuncio {
      * un {@code %} escrito por el usuario es un carácter literal, no un comodín.
      */
     public static Specification<Anuncio> busqueda(String texto) {
-        String patron = "%" + escapar(texto.toLowerCase()) + "%";
+        String patron = PatronesLike.contiene(texto);
         return (raiz, consulta, cb) -> cb.or(
-                cb.like(cb.lower(raiz.get("nombre")), patron, ESCAPE),
-                cb.like(cb.lower(raiz.get("descripcion")), patron, ESCAPE));
+                cb.like(cb.lower(raiz.get("nombre")), patron, PatronesLike.ESCAPE),
+                cb.like(cb.lower(raiz.get("descripcion")), patron, PatronesLike.ESCAPE));
     }
 
     /** Cursor por defecto (D4): filas con tupla {@code (fechaCreacion, id)} estrictamente menor. */
@@ -85,11 +83,4 @@ public final class EspecificacionesAnuncio {
                         cb.greaterThan(raiz.get("id"), id)));
     }
 
-    /** Escapa el texto del usuario para que {@code %}, {@code _} y {@code \} sean literales. */
-    static String escapar(String texto) {
-        return texto
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
-    }
 }

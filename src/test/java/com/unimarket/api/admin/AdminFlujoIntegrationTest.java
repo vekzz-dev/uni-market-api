@@ -47,11 +47,15 @@ class AdminFlujoIntegrationTest extends SoportePostgresIT {
     }
 
     private Sesion usuarioConSesion(String etiqueta, String rol) {
+        return usuarioConSesion(etiqueta, rol, "Usuario " + etiqueta);
+    }
+
+    private Sesion usuarioConSesion(String etiqueta, String rol, String nombre) {
         String email = etiqueta.toLowerCase() + "-" + UUID.randomUUID() + "@uni.edu";
         UUID id = jdbc.queryForObject(
                 "INSERT INTO usuarios (email, nombre, hash_contrasena, fecha_verificacion_email, rol) "
                         + "VALUES (?, ?, ?, now(), ?) RETURNING id",
-                UUID.class, email, "Usuario " + etiqueta, encoder.encode("secreta123"), rol);
+                UUID.class, email, nombre, encoder.encode("secreta123"), rol);
         ResponseEntity<String> login = rest.postForEntity(
                 "/v1/auth/login", Map.of("email", email, "contrasena", "secreta123"), String.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -164,6 +168,74 @@ class AdminFlujoIntegrationTest extends SoportePostgresIT {
 
             assertThat(patch(admin.token(), "/v1/admin/usuarios/" + dadoDeBaja.id() + "/habilitacion", "{\"habilitado\":false}")
                     .getStatusCode()).as("operar sobre una baja → 404").isEqualTo(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("Búsqueda de usuarios (issue #7)")
+    class BusquedaDeUsuarios {
+
+        private JsonNode buscar(String token, String consulta) {
+            ResponseEntity<String> respuesta = rest.exchange("/v1/admin/usuarios?limite=100&" + consulta,
+                    HttpMethod.GET, new HttpEntity<>(null, conTodo(token)), String.class);
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+            return json.readTree(respuesta.getBody());
+        }
+
+        @Test
+        @DisplayName("Encuentra por nombre y por email sin distinguir mayúsculas, y el total refleja el filtro")
+        void buscaPorNombreYEmail() {
+            Sesion admin = usuarioConSesion("admin-busca", "admin");
+            Sesion ana = usuarioConSesion("busca-ana", "miembro", "Ana María Pérez");
+            Sesion luis = usuarioConSesion("busca-luis", "miembro", "Luis Gómez");
+
+            JsonNode porNombre = buscar(admin.token(), "q=ana mar");
+            JsonNode porEmail = buscar(admin.token(), "q=busca-ana");
+
+            assertThat(porNombre.get("datos").toString())
+                    .as("sin distinguir mayúsculas").contains(ana.id().toString()).doesNotContain(luis.id().toString());
+            assertThat(porNombre.get("paginacion").get("total").asLong()).isEqualTo(1);
+            assertThat(porEmail.get("datos").toString()).as("también busca en el email").contains(ana.id().toString());
+            assertThat(porEmail.get("paginacion").get("total").asLong()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Se combina con rol: los dos filtros aplican a la vez")
+        void combinaConRol() {
+            Sesion admin = usuarioConSesion("admin-combina", "admin");
+            Sesion moderadora = usuarioConSesion("combina-mod", "moderador", "Marta Ruiz");
+
+            JsonNode coincide = buscar(admin.token(), "q=Marta&rol=moderador");
+            JsonNode descarta = buscar(admin.token(), "q=Marta&rol=miembro");
+
+            assertThat(coincide.get("datos").toString()).contains(moderadora.id().toString());
+            assertThat(descarta.get("datos")).isEmpty();
+            assertThat(descarta.get("paginacion").get("total").asLong()).isZero();
+        }
+
+        @Test
+        @DisplayName("Una cuenta dada de baja no aparece aunque coincida (R1/R15)")
+        void excluyeDadasDeBaja() {
+            Sesion admin = usuarioConSesion("admin-baja-busca", "admin");
+            Sesion baja = usuarioConSesion("baja-busca", "miembro", "Zoe Retirada");
+            jdbc.update("UPDATE usuarios SET fecha_eliminacion = now() WHERE id = ?", baja.id());
+
+            assertThat(buscar(admin.token(), "q=Zoe").get("datos")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("q demasiado largo responde 400; q vacío se trata como ausente")
+        void limitesDeQ() {
+            Sesion admin = usuarioConSesion("admin-limites", "admin");
+            usuarioConSesion("limites-uno", "miembro", "Pablo Lima");
+
+            ResponseEntity<String> larga = rest.exchange("/v1/admin/usuarios?q=" + "x".repeat(201),
+                    HttpMethod.GET, new HttpEntity<>(null, conTodo(admin.token())), String.class);
+
+            assertThat(larga.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(buscar(admin.token(), "q=").get("paginacion").get("total").asLong())
+                    .as("q en blanco se trata como ausente")
+                    .isGreaterThanOrEqualTo(1);
         }
     }
 

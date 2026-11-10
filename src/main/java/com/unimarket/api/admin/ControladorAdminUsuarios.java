@@ -36,13 +36,14 @@ public class ControladorAdminUsuarios {
         this.administracion = administracion;
     }
 
-    /** Listado filtrable por rol: solo cuentas activas (R15), offset + total. */
+    /** Listado filtrable por rol y por nombre/email: solo cuentas activas (R15), offset + total. */
     @GetMapping
     public ResponseEntity<RespuestaColeccion<UsuarioAdminRespuesta>> listar(
             @RequestParam(required = false) Rol rol,
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer pagina,
             @RequestParam(required = false) Integer limite) {
-        return ResponseEntity.ok(administracion.listar(rol, pagina, limite));
+        return ResponseEntity.ok(administracion.listar(rol, q, pagina, limite));
     }
 
     /** Cambio de rol (R14): 403 el propio, 422 fuera de dominio o igual al actual. */
