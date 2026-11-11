@@ -22,31 +22,41 @@ public class OyenteCorreos {
 
     private final CorreoTransaccional correos;
     private final PropiedadesNotificaciones propiedades;
+    private final PlantillasCorreo plantillas;
 
-    public OyenteCorreos(CorreoTransaccional correos, PropiedadesNotificaciones propiedades) {
+    public OyenteCorreos(
+            CorreoTransaccional correos, PropiedadesNotificaciones propiedades, PlantillasCorreo plantillas) {
         this.correos = correos;
         this.propiedades = propiedades;
+        this.plantillas = plantillas;
     }
 
     /** Confirmación de registro: el token crudo viaja una sola vez, por email (R11). */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alConfirmar(EventosCorreo.ConfirmacionRequerida evento) {
+        String texto = "Hola " + evento.nombre() + ": tu código de confirmación en Uni Market es "
+                + evento.pin() + ". Caduca en " + EventosCorreo.VIGENCIA_PIN_TEXTO
+                + " y solo se puede usar una vez.";
         enviarConReintentos(new CorreoTransaccional.MensajeCorreo(
                 evento.email(),
                 "Confirma tu cuenta en Uni Market",
-                "Confirma tu cuenta abriendo: /v1/auth/confirmar-email?token=" + evento.tokenCrudo()));
+                texto,
+                plantillas.confirmacion(evento.nombre(), evento.pin(), EventosCorreo.VIGENCIA_PIN_TEXTO)));
     }
 
     /** Restablecimiento solicitado en cuenta activa (R13). */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alRestablecer(EventosCorreo.RestablecimientoRequerido evento) {
+        String texto = "Hola " + evento.nombre() + ": tu código para restablecer la contraseña de Uni Market es "
+                + evento.pin() + ". Caduca en " + EventosCorreo.VIGENCIA_PIN_TEXTO
+                + " y solo se puede usar una vez.";
         enviarConReintentos(new CorreoTransaccional.MensajeCorreo(
                 evento.email(),
                 "Restablece tu contraseña en Uni Market",
-                "Restablece tu contraseña con este token (60 minutos, un solo uso): token="
-                        + evento.tokenCrudo()));
+                texto,
+                plantillas.restablecimiento(evento.nombre(), evento.pin(), EventosCorreo.VIGENCIA_PIN_TEXTO)));
     }
 
     private void enviarConReintentos(CorreoTransaccional.MensajeCorreo mensaje) {
@@ -80,7 +90,8 @@ public class OyenteCorreos {
         return new CorreoTransaccional.MensajeCorreo(
                 destino,
                 "[para " + mensaje.destino() + "] " + mensaje.asunto(),
-                mensaje.texto());
+                mensaje.texto(),
+                mensaje.html());
     }
 
     private static void dormir(long milis) {

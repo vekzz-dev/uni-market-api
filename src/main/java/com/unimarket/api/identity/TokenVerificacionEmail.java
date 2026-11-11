@@ -34,6 +34,9 @@ public class TokenVerificacionEmail {
 
     private Instant fechaUso;
 
+    /** Intentos fallidos consumidos: al llegar al máximo el código se invalida (R11). */
+    private int intentos;
+
     private Instant fechaCreacion;
 
     /** Constructor para JPA. */
@@ -48,9 +51,26 @@ public class TokenVerificacionEmail {
         }
     }
 
-    /** Activo si no fue consumido ni expiró al instante dado (R11). */
+    /** Máximo de intentos fallidos antes de invalidar el código (R11). */
+    public static final int MAX_INTENTOS = 5;
+
+    /** Activo si no fue consumido, no expiró y no agotó sus intentos (R11). */
     public boolean activo(Instant ahora) {
-        return fechaUso == null && ahora.isBefore(fechaExpiracion);
+        return fechaUso == null && ahora.isBefore(fechaExpiracion) && !agotado();
+    }
+
+    /** Suma un intento fallido; el llamador invalida el código al llegar al máximo. */
+    public void registrarIntentoFallido() {
+        intentos++;
+    }
+
+    /** Sin intentos disponibles: el código deja de servir aunque no haya expirado. */
+    public boolean agotado() {
+        return intentos >= MAX_INTENTOS;
+    }
+
+    public int getIntentos() {
+        return intentos;
     }
 
     /** Consumo de un solo uso: fija {@code fechaUso} en la misma transacción (R11). */

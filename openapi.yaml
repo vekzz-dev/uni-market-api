@@ -111,20 +111,22 @@ paths:
           description: Refresh revocado (o ya revocado; idempotente).
 
   /auth/confirmar-email:
-    get:
+    post:
       tags: [Auth]
       operationId: confirmarEmail
-      summary: Confirma el email con el token recibido por correo
+      summary: Confirma el email con el PIN recibido por correo
       security: []
       description: |
-        Token crudo de un solo uso, ventana 24 horas, buscado por hash (R11).
+        PIN de **6 dígitos** de un solo uso, ventana **15 minutos**, persistido como hash
+        (R11, issue #8). Máximo **5 intentos**: al agotarlos el código se invalida y hay
+        que pedir otro. El correo no contiene enlaces. Rate limiting → `429`.
         El login se rechaza hasta confirmar (criterio PRD §8).
-      parameters:
-        - name: token
-          in: query
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarEmailRequest'
       responses:
         '200':
           description: Email confirmado.
@@ -132,12 +134,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MensajeConfirmacion'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
         '422':
-          description: Token inválido, expirado o ya consumido (R11).
+          description: |
+            PIN inválido, expirado, ya usado o con intentos agotados. Mensaje genérico:
+            no distingue cuenta inexistente de código incorrecto (R13).
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problema'
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
 
   /auth/restablecer-contrasena:
     post:
@@ -148,7 +154,7 @@ paths:
       description: |
         No-enumeración (R13): responde EXACTAMENTE lo mismo exista o no la cuenta;
         el email solo se envía si la cuenta existe y está activa.
-        Token de ventana 60 minutos, un solo uso, persistido como hash (R11).
+        PIN de **6 dígitos**, ventana **15 minutos**, un solo uso, persistido como hash (R11).
         Rate limiting → `429`.
       requestBody:
         required: true
@@ -170,9 +176,11 @@ paths:
     post:
       tags: [Auth]
       operationId: confirmarRestablecimiento
-      summary: Restablece la contraseña con el token
+      summary: Restablece la contraseña con el PIN
       security: []
-      description: Token de 60 minutos de un solo uso (R11); política uniforme mínimo 8 caracteres.
+      description: |
+        PIN de 6 dígitos de un solo uso, ventana 15 minutos y máximo 5 intentos (R11);
+        política uniforme mínimo 8 caracteres. Rate limiting → `429`.
       requestBody:
         required: true
         content:
@@ -184,11 +192,12 @@ paths:
           description: Contraseña restablecida.
         '400': { $ref: '#/components/responses/EstructuraInvalida' }
         '422':
-          description: Token inválido/expirado/consumido o contraseña bajo la política.
+          description: PIN inválido/expirado/consumido o contraseña bajo la política.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problema'
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
 
   /auth/reenviar-confirmacion:
     post:
@@ -1349,13 +1358,26 @@ components:
       properties:
         email:
           $ref: '#/components/schemas/Email'
+    PinConfirmacion:
+      type: string
+      pattern: '^\\d{6}$'
+      description: PIN de 6 dígitos recibido por correo; un solo uso y 5 intentos como máximo.
+    ConfirmarEmailRequest:
+      type: object
+      required: [email, pin]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        pin:
+          $ref: '#/components/schemas/PinConfirmacion'
     RestablecerConfirmacionRequest:
       type: object
-      required: [token, nuevaContrasena]
+      required: [email, pin, nuevaContrasena]
       properties:
-        token:
-          type: string
-          minLength: 1
+        email:
+          $ref: '#/components/schemas/Email'
+        pin:
+          $ref: '#/components/schemas/PinConfirmacion'
         nuevaContrasena:
           type: string
           minLength: 8

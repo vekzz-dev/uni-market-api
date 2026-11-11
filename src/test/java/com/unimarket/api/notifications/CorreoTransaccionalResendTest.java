@@ -59,8 +59,7 @@ class CorreoTransaccionalResendTest {
         AtomicReference<String> cuerpo = new AtomicReference<>();
         String url = levantarStub(200, autorizacion, cuerpo);
 
-        adaptador(url).enviar(new CorreoTransaccional.MensajeCorreo(
-                "ana@uni.edu", "Confirma tu cuenta", "Tu token es abc123"));
+        adaptador(url).enviar(new CorreoTransaccional.MensajeCorreo("ana@uni.edu", "Confirma tu cuenta", "Tu token es abc123", null));
 
         assertThat(autorizacion.get()).isEqualTo("Bearer clave-de-prueba");
         assertThat(cuerpo.get())
@@ -78,7 +77,7 @@ class CorreoTransaccionalResendTest {
         String url = levantarStub(200, autorizacion, cuerpo);
 
         adaptador(url).enviar(new CorreoTransaccional.MensajeCorreo(
-                "ana@uni.edu", "Asunto \"raro\"", "línea1\nlínea2"));
+                "ana@uni.edu", "Asunto \"raro\"", "línea1\nlínea2", null));
 
         assertThat(cuerpo.get())
                 .contains("Asunto \\\"raro\\\"")
@@ -92,8 +91,7 @@ class CorreoTransaccionalResendTest {
         AtomicReference<String> cuerpo = new AtomicReference<>();
         String url = levantarStub(500, autorizacion, cuerpo);
 
-        CorreoTransaccional.MensajeCorreo mensaje = new CorreoTransaccional.MensajeCorreo(
-                "ana@uni.edu", "Asunto", "Texto");
+        CorreoTransaccional.MensajeCorreo mensaje = new CorreoTransaccional.MensajeCorreo("ana@uni.edu", "Asunto", "Texto", null);
 
         assertThatThrownBy(() -> adaptador(url).enviar(mensaje))
                 .isInstanceOf(IllegalStateException.class)

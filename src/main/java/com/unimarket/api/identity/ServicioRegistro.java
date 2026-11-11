@@ -72,26 +72,39 @@ public class ServicioRegistro {
         return Dtos.UsuarioRespuesta.de(usuario);
     }
 
+    /** Mensaje único de PIN inválido: no distingue cuenta, caducidad, uso ni intentos (R13). */
+    static final String PIN_INVALIDO = "El código es inválido, expiró o ya fue usado.";
+
     /**
-     * Consume el token de confirmación en una transacción: fija {@code fechaUso} y la
-     * verificación del usuario de un solo golpe (R11).
+     * Consume el PIN de confirmación en una transacción: compara el hash, marca uso y
+     * confirma el email de un solo golpe (R11, issue #8). Un fallo suma intento y al
+     * agotarlos invalida el código, de modo que 10^6 combinaciones no sean atacables.
      *
-     * @throws ReglaDeNegocioException si es inválido, expiró o ya se usó (422)
+     * @throws ReglaDeNegocioException si no coincide, expiró, se usó o agotó intentos (422)
      */
     @Transactional
-    public void confirmarEmail(String tokenCrudo) {
+    public void confirmarEmail(String emailCrudo, String pin) {
+        Usuario usuario = usuarios
+                .findByEmailIgnoreCaseAndFechaEliminacionIsNull(normalizarEmail(emailCrudo))
+                .filter(Usuario::activa)
+                .orElseThrow(() -> new ReglaDeNegocioException(PIN_INVALIDO));
         TokenVerificacionEmail token = verificaciones
-                .findByHashToken(TokensSeguridad.sha256Hex(tokenCrudo))
-                .filter(t -> t.activo(Instant.now()))
-                .orElseThrow(() -> new ReglaDeNegocioException(
-                        "El token es inválido, expiró o ya fue usado."));
+                .findByUsuarioIdAndFechaUsoIsNull(usuario.getId()).stream()
+                .filter(activo -> activo.activo(Instant.now()))
+                .findFirst()
+                .orElseThrow(() -> new ReglaDeNegocioException(PIN_INVALIDO));
+        if (!TokensSeguridad.pinCoincide(pin, token.getHashToken())) {
+            token.registrarIntentoFallido();
+            if (token.agotado()) {
+                token.marcarUso(Instant.now());
+            }
+            throw new ReglaDeNegocioException(PIN_INVALIDO);
+        }
         Instant ahora = Instant.now();
         token.marcarUso(ahora);
-        usuarios.findById(token.getUsuarioId()).ifPresent(usuario -> {
-            if (usuario.activa() && usuario.getFechaVerificacionEmail() == null) {
-                usuario.setFechaVerificacionEmail(ahora);
-            }
-        });
+        if (usuario.getFechaVerificacionEmail() == null) {
+            usuario.setFechaVerificacionEmail(ahora);
+        }
     }
 
     /**
@@ -120,20 +133,20 @@ public class ServicioRegistro {
                 });
     }
 
-    /** Emite el token de 24 h invalidando los activos previos en la misma transacción. */
+    /** Emite el PIN de 15 min invalidando los activos previos en la misma transacción. */
     private void emitirToken(Usuario usuario) {
         Instant ahora = Instant.now();
         verificaciones.findByUsuarioIdAndFechaUsoIsNull(usuario.getId())
                 .forEach(previo -> previo.marcarUso(ahora));
         verificaciones.flush();
-        String crudo = TokensSeguridad.generarCrudo();
+        String pin = TokensSeguridad.generarPin();
         TokenVerificacionEmail token = new TokenVerificacionEmail();
         token.setUsuarioId(usuario.getId());
-        token.setHashToken(TokensSeguridad.sha256Hex(crudo));
-        token.setFechaExpiracion(ahora.plus(24, ChronoUnit.HOURS));
+        token.setHashToken(TokensSeguridad.sha256Hex(pin));
+        token.setFechaExpiracion(ahora.plus(EventosCorreo.VIGENCIA_PIN_MINUTOS, ChronoUnit.MINUTES));
         verificaciones.save(token);
-        eventos.publishEvent(
-                new EventosCorreo.ConfirmacionRequerida(usuario.getId(), usuario.getEmail(), crudo));
+        eventos.publishEvent(new EventosCorreo.ConfirmacionRequerida(
+                usuario.getId(), usuario.getEmail(), usuario.getNombre(), pin));
     }
 
     /** Email recortado y en minúsculas: `A@x.com` y `a@x.com` son la misma cuenta (R2). */

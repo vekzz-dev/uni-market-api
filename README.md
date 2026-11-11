@@ -61,8 +61,9 @@ mvn spring-boot:run
 curl -s -X POST localhost:8080/v1/usuarios -H 'Content-Type: application/json' \
   -d '{"email":"ana@uni.edu","nombre":"Ana","contrasena":"secreta123"}'
 
-# Copia el token del log y confirma:
-curl -s 'localhost:8080/v1/auth/confirmar-email?token=PEGAR_TOKEN'
+# Copia el PIN de 6 dígitos del log y confirma:
+curl -s -X POST localhost:8080/v1/auth/confirmar-email -H 'Content-Type: application/json' \
+  -d '{"email":"ana@uni.edu","pin":"123456"}'
 
 # Login → accessToken + refreshToken:
 curl -s -X POST localhost:8080/v1/auth/login -H 'Content-Type: application/json' \
@@ -144,7 +145,7 @@ moderar → catálogo y cómo probar Resend de verdad) está en **`docs/local-te
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**242 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**257 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 
@@ -179,7 +180,7 @@ Ejecuta la suite completa (**242 tests**) contra **PostgreSQL 18 real** (Testcon
 
 ```
 src/main/java/com/unimarket/api/   shared · identity · catalog · moderation · messaging · admin · notifications · media
-src/main/resources/db/migration/   Flyway V1–V6 (esquema, seed, tokens, procedencia del rechazo, índices de búsqueda)
+src/main/resources/db/migration/   Flyway V1–V7 (esquema, seed, tokens, procedencia del rechazo, índices de búsqueda, intentos de PIN)
 src/test/java/                     unit + slices + integración Testcontainers
 docs/                              PRD · DBDD · SDD (fuente de verdad del diseño)
 odd/tasks/                         registro de trabajo por feature (con evidencia)

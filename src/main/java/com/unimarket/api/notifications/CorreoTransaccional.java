@@ -7,8 +7,12 @@ package com.unimarket.api.notifications;
  */
 public interface CorreoTransaccional {
 
-    /** Mensaje mínimo: destino, asunto y texto con el token crudo de un solo uso. */
-    record MensajeCorreo(String destino, String asunto, String texto) {
+    /**
+     * Mensaje transaccional: {@code texto} es la versión plana (la que se imprime en el log
+     * de dev y la que viaja como alternativa) y {@code html} la versión con formato. El PIN
+     * de un solo uso va en ambas.
+     */
+    record MensajeCorreo(String destino, String asunto, String texto, String html) {
     }
 
     /** Envía el mensaje; el fallo lo gestiona el oyente con backoff, nunca el HTTP. */

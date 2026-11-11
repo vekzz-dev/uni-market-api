@@ -3,6 +3,8 @@ package com.unimarket.api.identity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -16,6 +18,33 @@ class ReglasRegistroTest {
     void normalizarEmail_shouldRecortarYMinimizar() {
         // Act + Assert
         assertThat(ServicioRegistro.normalizarEmail("  Ana@Correo.COM  ")).isEqualTo("ana@correo.com");
+    }
+
+    @Test
+    @DisplayName("El PIN son 6 dígitos y coincide solo con su hash (R11)")
+    void pin_shouldSerSeisDigitosYCompararPorHash() {
+        String pin = TokensSeguridad.generarPin();
+
+        assertThat(pin).hasSize(6).matches("\\d{6}");
+        assertThat(TokensSeguridad.pinCoincide(pin, TokensSeguridad.sha256Hex(pin))).isTrue();
+        assertThat(TokensSeguridad.pinCoincide("000000",
+                TokensSeguridad.sha256Hex("111111"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Cinco intentos fallidos invalidan el código aunque no haya expirado (R11)")
+    void token_shouldAgotarseTrasCincoIntentos() {
+        TokenVerificacionEmail token = new TokenVerificacionEmail();
+        token.setHashToken(TokensSeguridad.sha256Hex("123456"));
+        token.setFechaExpiracion(Instant.now().plusSeconds(600));
+
+        for (int intento = 0; intento < TokenVerificacionEmail.MAX_INTENTOS; intento++) {
+            assertThat(token.activo(Instant.now())).isTrue();
+            token.registrarIntentoFallido();
+        }
+
+        assertThat(token.agotado()).isTrue();
+        assertThat(token.activo(Instant.now())).as("agotado deja de servir").isFalse();
     }
 
     @Test

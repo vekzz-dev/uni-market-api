@@ -125,17 +125,21 @@ curl -s -X POST localhost:8080/v1/usuarios \
 
 Responde `201`. El email de confirmación sale en el log en `dev`/`resend+log`.
 
-### 4.2 Token de confirmación desde el log
+### 4.2 PIN de confirmación desde el log
+
+El correo no trae enlaces: trae un **PIN de 6 dígitos** (15 minutos, 5 intentos como máximo).
 
 ```bash
-podman logs unimarket-api | grep -o 'confirmar-email?token=[^ ]*' | tail -1
+podman logs unimarket-api | grep -o 'es [0-9]\{6\}\.' | tail -1
 ```
 
-Copia el token y confirma:
+Copia el PIN y confirma:
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' \
-  'localhost:8080/v1/auth/confirmar-email?token=PEGAR_TOKEN'    # 200
+  -X POST localhost:8080/v1/auth/confirmar-email \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ana@uni.edu","pin":"PEGAR_PIN"}'    # 200
 ```
 
 ### 4.3 Login

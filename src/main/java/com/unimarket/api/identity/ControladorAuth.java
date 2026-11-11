@@ -57,11 +57,12 @@ public class ControladorAuth {
         return ResponseEntity.noContent().build();
     }
 
-    /** Confirma el email con el token crudo de un solo uso (R11). */
-    @GetMapping("/confirmar-email")
+    /** Confirma el email con el PIN de un solo uso (R11, issue #8). */
+    @PostMapping("/confirmar-email")
     public ResponseEntity<Dtos.MensajeRespuesta> confirmarEmail(
-            @RequestParam(value = "token", required = false) String token) {
-        registro.confirmarEmail(exigirToken(token));
+            @Valid @RequestBody Dtos.ConfirmarEmailRequest cuerpo, HttpServletRequest solicitud) {
+        tasa.exigir("confirmar-email", solicitud.getRemoteAddr(), cuerpo.email());
+        registro.confirmarEmail(cuerpo.email(), cuerpo.pin());
         return ResponseEntity.ok(new Dtos.MensajeRespuesta("Email confirmado."));
     }
 
@@ -90,18 +91,12 @@ public class ControladorAuth {
                         "Si la cuenta existe y no está confirmada, recibirás un correo de confirmación."));
     }
 
-    /** Consume el reset de un solo uso (R11). */
+    /** Consume el reset de un solo uso con PIN (R11, issue #8). */
     @PostMapping("/restablecer-contrasena/confirmar")
-    public ResponseEntity<Void> confirmarReset(@Valid @RequestBody Dtos.ConfirmarResetRequest cuerpo) {
-        recuperacion.confirmar(cuerpo.token(), cuerpo.nuevaContrasena());
+    public ResponseEntity<Void> confirmarReset(
+            @Valid @RequestBody Dtos.ConfirmarResetRequest cuerpo, HttpServletRequest solicitud) {
+        tasa.exigir("confirmar-reset", solicitud.getRemoteAddr(), cuerpo.email());
+        recuperacion.confirmar(cuerpo.email(), cuerpo.pin(), cuerpo.nuevaContrasena());
         return ResponseEntity.noContent().build();
-    }
-
-    private static String exigirToken(String token) {
-        if (token == null || token.isBlank()) {
-            throw new com.unimarket.api.shared.error.EstructuraInvalidaException(
-                    "El parámetro 'token' es requerido.");
-        }
-        return token;
     }
 }

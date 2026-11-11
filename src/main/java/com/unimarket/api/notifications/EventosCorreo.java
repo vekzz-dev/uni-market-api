@@ -10,14 +10,24 @@ import java.util.UUID;
  */
 public final class EventosCorreo {
 
+    /**
+     * Vigencia del PIN de un solo uso (issue #8). Vive aquí —y no en identity— porque la
+     * plantilla del correo la necesita y {@code identity} ya depende de {@code notifications}:
+     * al revés se rompería la frontera de módulos (ArchUnit).
+     */
+    public static final int VIGENCIA_PIN_MINUTOS = 15;
+
+    /** Texto de vigencia que se muestra en el correo. */
+    public static final String VIGENCIA_PIN_TEXTO = VIGENCIA_PIN_MINUTOS + " minutos";
+
     private EventosCorreo() {
     }
 
-    /** Registro creado: confirma el email con el token crudo (ventana 24 h, R11). */
-    public record ConfirmacionRequerida(UUID usuarioId, String email, String tokenCrudo) {
+    /** Registro creado: confirma el email con un PIN de 6 dígitos (15 min, R11). */
+    public record ConfirmacionRequerida(UUID usuarioId, String email, String nombre, String pin) {
     }
 
-    /** Reset solicitado en cuenta activa: token crudo (ventana 60 min, R11). */
-    public record RestablecimientoRequerido(UUID usuarioId, String email, String tokenCrudo) {
+    /** Reset solicitado en cuenta activa: PIN de 6 dígitos (15 min, R11). */
+    public record RestablecimientoRequerido(UUID usuarioId, String email, String nombre, String pin) {
     }
 }

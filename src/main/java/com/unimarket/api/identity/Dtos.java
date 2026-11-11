@@ -3,6 +3,7 @@ package com.unimarket.api.identity;
 import com.unimarket.api.shared.security.Rol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -42,9 +43,16 @@ public final class Dtos {
     public record SolicitudResetRequest(@NotBlank @Email String email) {
     }
 
-    /** Consumo del reset: token de 60 min de un solo uso (R11). */
+    /** Confirmación de email con PIN de 6 dígitos de un solo uso (R11, issue #8). */
+    public record ConfirmarEmailRequest(
+            @NotBlank @Email String email,
+            @NotBlank @Pattern(regexp = "\\d{6}", message = "El código debe tener 6 dígitos.") String pin) {
+    }
+
+    /** Consumo del reset: PIN de 15 min de un solo uso + contraseña nueva (R11). */
     public record ConfirmarResetRequest(
-            @NotBlank String token,
+            @NotBlank @Email String email,
+            @NotBlank @Pattern(regexp = "\\d{6}", message = "El código debe tener 6 dígitos.") String pin,
             @Size(min = 8, max = 255) String nuevaContrasena) {
     }
 

@@ -42,7 +42,8 @@ import static org.mockito.Mockito.verify;
 @DisplayName("Identidad: flujos end-to-end")
 class IdentityFlujoIntegrationTest extends SoportePostgresIT {
 
-    private static final Pattern TOKEN_EN_CUERPO = Pattern.compile("token=([A-Za-z0-9_\\-]+)");
+    /** El correo publica un PIN de 6 dígitos y ningún enlace (issue #8). */
+    private static final Pattern PIN_EN_CUERPO = Pattern.compile("\\b(\\d{6})\\b");
 
     @Autowired
     private TestRestTemplate http;
@@ -112,27 +113,36 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
         return post("/v1/auth/login", Map.of("email", email, "contrasena", contrasena));
     }
 
-    private String tokenCrudoDeConfirmacion(String email) {
-        return ultimoTokenPara(email, "Confirma tu cuenta");
+    private String pinDeConfirmacion(String email) {
+        return ultimoPinPara(email, "Confirma tu cuenta");
     }
 
-    private String tokenCrudoDeReset(String email) {
-        return ultimoTokenPara(email, "Restablece tu contraseña");
+    private String pinDeReset(String email) {
+        return ultimoPinPara(email, "Restablece tu contraseña");
     }
 
     /**
-     * Extrae el token crudo del último correo enviado a ese email con ese asunto: el
-     * oyente async ya llamó al puerto (verificado con Awaitility) y el cuerpo porta el
-     * token de un solo uso.
+     * Extrae el PIN del último correo enviado a ese email con ese asunto: el oyente async
+     * ya llamó al puerto (verificado con Awaitility) y el cuerpo plano lo incluye.
      */
-    private String ultimoTokenPara(String email, String asunto) {
+    private CorreoTransaccional.MensajeCorreo ultimoCorreoPara(String email, String asunto) {
+        org.mockito.ArgumentCaptor<CorreoTransaccional.MensajeCorreo> captor =
+                org.mockito.ArgumentCaptor.forClass(CorreoTransaccional.MensajeCorreo.class);
+        await().untilAsserted(() -> verify(correos, atLeastOnce()).enviar(captor.capture()));
+        return captor.getAllValues().stream()
+                .filter(m -> m.destino().equals(email) && m.asunto().startsWith(asunto))
+                .reduce((primero, ultimo) -> ultimo)
+                .orElseThrow(() -> new AssertionError("sin correo '" + asunto + "' para " + email));
+    }
+
+    private String ultimoPinPara(String email, String asunto) {
         org.mockito.ArgumentCaptor<CorreoTransaccional.MensajeCorreo> captor =
                 org.mockito.ArgumentCaptor.forClass(CorreoTransaccional.MensajeCorreo.class);
         await().untilAsserted(() -> verify(correos, atLeastOnce()).enviar(captor.capture()));
         return captor.getAllValues().stream()
                 .filter(m -> m.destino().equals(email) && m.asunto().startsWith(asunto))
                 .map(m -> {
-                    Matcher matcher = TOKEN_EN_CUERPO.matcher(m.texto());
+                    Matcher matcher = PIN_EN_CUERPO.matcher(m.texto());
                     return matcher.find() ? matcher.group(1) : null;
                 })
                 .filter(token -> token != null)
@@ -165,9 +175,10 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             var previo = login(email, "secreta123");
             assertThat(previo.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-            // Act: confirmación con el token crudo del evento post-commit
-            String crudo = tokenCrudoDeConfirmacion(email.toLowerCase());
-            var confirmacion = get("/v1/auth/confirmar-email?token=" + crudo);
+            // Act: confirmación con el PIN del evento post-commit
+            String pin = pinDeConfirmacion(email.toLowerCase());
+            var confirmacion = post("/v1/auth/confirmar-email",
+                    Map.of("email", email, "pin", pin));
 
             // Assert
             assertThat(confirmacion.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -179,9 +190,22 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             assertThat(sesion.getBody().get("refreshToken").asText()).isNotBlank();
             assertThat(sesion.getBody().get("expiraEnSegundos").asInt()).isPositive();
 
-            // Act + Assert: el token de confirmación es de un solo uso
-            var reuso = get("/v1/auth/confirmar-email?token=" + crudo);
+            // Act + Assert: el PIN de confirmación es de un solo uso
+            var reuso = post("/v1/auth/confirmar-email", Map.of("email", email, "pin", pin));
             assertThat(reuso.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        }
+
+        @Test
+        @DisplayName("El correo trae un PIN de 6 dígitos, HTML y ningún enlace (issue #8)")
+        void correo_shouldTraerPinSinEnlaces() {
+            String email = emailUnico("pin");
+
+            registrar(email);
+
+            CorreoTransaccional.MensajeCorreo mensaje = ultimoCorreoPara(email.toLowerCase(), "Confirma tu cuenta");
+            assertThat(mensaje.texto()).matches("(?s).*\\b\\d{6}\\b.*");
+            assertThat(mensaje.texto()).doesNotContain("http", "token=", "confirmar-email");
+            assertThat(mensaje.html()).as("el correo lleva versión HTML con el PIN").isNotBlank().contains("<html");
         }
 
         @Test
@@ -218,10 +242,11 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
         }
 
         @Test
-        @DisplayName("Token de confirmación inválido → 422")
-        void confirmar_shouldResponder422_cuandoTokenDesconocido() {
+        @DisplayName("PIN de confirmación inválido → 422")
+        void confirmar_shouldResponder422_cuandoPinDesconocido() {
             // Act
-            var respuesta = get("/v1/auth/confirmar-email?token=no-existe");
+            var respuesta = post("/v1/auth/confirmar-email",
+                    Map.of("email", "nadie-" + UUID.randomUUID() + "@uni.edu", "pin", "000000"));
 
             // Assert
             assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -264,8 +289,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             String email = emailUnico("rotacion");
             registrar(email);
             String emailNormalizado = email.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(emailNormalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", emailNormalizado, "pin", pinDeConfirmacion(emailNormalizado)));
             String refresh1 = login(emailNormalizado, "secreta123").getBody().get("refreshToken").asText();
 
             // Act: rotación legítima
@@ -302,8 +327,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             String email = emailUnico("logout");
             registrar(email);
             String normalizado = email.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(normalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
             String refresh = login(normalizado, "secreta123").getBody().get("refreshToken").asText();
 
             // Act + Assert: primera vez revoca, segunda es idempotente
@@ -331,8 +356,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             String existente = emailUnico("reset");
             registrar(existente);
             String normalizado = existente.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(normalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
             String fantasma = emailUnico("fantasma");
 
             // Act
@@ -344,26 +369,27 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             assertThat(sinCuenta.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             assertThat(conCuenta.getBody().toString()).isEqualTo(sinCuenta.getBody().toString());
 
-            // Act: consumo del token de 60 minutos
-            String crudo = tokenCrudoDeReset(normalizado);
+            // Act: consumo del PIN de 15 minutos
+            String pin = pinDeReset(normalizado);
             var confirmado = post("/v1/auth/restablecer-contrasena/confirmar",
-                    Map.of("token", crudo, "nuevaContrasena", "nueva-clave-1"));
+                    Map.of("email", normalizado, "pin", pin, "nuevaContrasena", "nueva-clave-1"));
 
             // Assert: 204, segundo uso 422 y login con la nueva clave
             assertThat(confirmado.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
             var reuso = post("/v1/auth/restablecer-contrasena/confirmar",
-                    Map.of("token", crudo, "nuevaContrasena", "otra-clave-22"));
+                    Map.of("email", normalizado, "pin", pin, "nuevaContrasena", "otra-clave-22"));
             assertThat(reuso.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
             assertThat(login(normalizado, "nueva-clave-1").getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(login(normalizado, "secreta123").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         @Test
-        @DisplayName("Token de reset inválido → 422")
-        void resetConfirmar_shouldResponder422_cuandoTokenDesconocido() {
+        @DisplayName("PIN de reset inválido → 422")
+        void resetConfirmar_shouldResponder422_cuandoPinDesconocido() {
             // Act
             var respuesta = post("/v1/auth/restablecer-contrasena/confirmar",
-                    Map.of("token", "desconocido", "nuevaContrasena", "nueva-clave-1"));
+                    Map.of("email", "nadie-" + UUID.randomUUID() + "@uni.edu", "pin", "000000",
+                            "nuevaContrasena", "nueva-clave-1"));
 
             // Assert
             assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -381,8 +407,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             String email = emailUnico("clave");
             registrar(email);
             String normalizado = email.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(normalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
             String acceso = login(normalizado, "secreta123").getBody().get("accessToken").asText();
 
             // Act + Assert: actual incorrecta → 422
@@ -404,8 +430,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
 
         private String accesoVigente(String email) {
             String normalizado = email.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(normalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
             return login(normalizado, "secreta123").getBody().get("accessToken").asText();
         }
 
@@ -481,8 +507,8 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             String email = emailUnico("baja");
             registrar(email);
             String normalizado = email.toLowerCase();
-            get("/v1/auth/confirmar-email?token="
-                    + tokenCrudoDeConfirmacion(normalizado));
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
             var sesion = login(normalizado, "secreta123");
             String acceso = sesion.getBody().get("accessToken").asText();
             String refresh = sesion.getBody().get("refreshToken").asText();
@@ -608,7 +634,7 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             var respuesta = login(emailUnico("oculta"), "secreta123");
 
             // Assert
-            Matcher m = TOKEN_EN_CUERPO.matcher("");
+            Matcher m = PIN_EN_CUERPO.matcher("");
             assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(respuesta.getBody().toString()).doesNotContain("existe", "habilitad", "confirma");
             assertThat(m.reset(respuesta.getBody().toString()).find()).isFalse();

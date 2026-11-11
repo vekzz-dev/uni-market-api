@@ -19,7 +19,8 @@ final class RegistroCorreoDev {
     }
 
     static void registrar(CorreoTransaccional.MensajeCorreo mensaje) {
-        log.info("Correo transaccional (dev): destino={} asunto={} texto={}",
-                mensaje.destino(), mensaje.asunto(), mensaje.texto());
+        log.info("Correo transaccional (dev): destino={} asunto={} texto={} html={}",
+                mensaje.destino(), mensaje.asunto(), mensaje.texto(),
+                mensaje.html() == null || mensaje.html().isBlank() ? "no" : "sí");
     }
 }

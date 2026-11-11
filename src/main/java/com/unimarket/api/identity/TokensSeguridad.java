@@ -18,6 +18,25 @@ public final class TokensSeguridad {
     private TokensSeguridad() {
     }
 
+    /**
+     * PIN de 6 dígitos para confirmación y reset (R11, issue #8): se genera uniforme sobre
+     * 000000–999999 con {@link SecureRandom}. Sin sesgo de módulo: el rango es exactamente
+     * 10^6, que es el mismo que usa {@code nextInt(bound)}.
+     */
+    public static String generarPin() {
+        return "%06d".formatted(ALEATORIO.nextInt(1_000_000));
+    }
+
+    /**
+     * Compara el PIN presentado con el hash persistido en tiempo constante. Un PIN corto
+     * invita a medir tiempos; {@code MessageDigest.isEqual} evita la comparación temprana.
+     */
+    public static boolean pinCoincide(String pin, String hashPersistido) {
+        return MessageDigest.isEqual(
+                sha256Hex(pin).getBytes(StandardCharsets.UTF_8),
+                hashPersistido.getBytes(StandardCharsets.UTF_8));
+    }
+
     /** Valor crudo opaco de 32 bytes aleatorios en base64url sin relleno. */
     public static String generarCrudo() {
         byte[] bytes = new byte[32];

@@ -34,14 +34,14 @@ class OyenteCorreosRedireccionTest {
     }
 
     private static EventosCorreo.ConfirmacionRequerida confirmacion() {
-        return new EventosCorreo.ConfirmacionRequerida(UUID.randomUUID(), "ana@uni.edu", "token-123");
+        return new EventosCorreo.ConfirmacionRequerida(UUID.randomUUID(), "ana@uni.edu", "Ana Pérez", "123456");
     }
 
     @Test
     @DisplayName("Sin redirección el correo va al destinatario real")
     void sinRedireccion() {
         CorreoDePrueba port = new CorreoDePrueba();
-        OyenteCorreos oyente = new OyenteCorreos(port, propiedades(""));
+        OyenteCorreos oyente = new OyenteCorreos(port, propiedades(""), new PlantillasCorreo());
 
         oyente.alConfirmar(confirmacion());
 
@@ -54,7 +54,7 @@ class OyenteCorreosRedireccionTest {
     @DisplayName("Con redirección todo va a la bandeja de pruebas y el original queda en el asunto")
     void conRedireccion() {
         CorreoDePrueba port = new CorreoDePrueba();
-        OyenteCorreos oyente = new OyenteCorreos(port, propiedades("  ia.fm100224@ufg.edu.sv  "));
+        OyenteCorreos oyente = new OyenteCorreos(port, propiedades("  ia.fm100224@ufg.edu.sv  "), new PlantillasCorreo());
 
         oyente.alConfirmar(confirmacion());
 
@@ -63,17 +63,17 @@ class OyenteCorreosRedireccionTest {
         assertThat(port.enviados.get(0).asunto())
                 .startsWith("[para ana@uni.edu]")
                 .contains("Confirma tu cuenta");
-        assertThat(port.enviados.get(0).texto()).as("el token no se toca").contains("token-123");
+        assertThat(port.enviados.get(0).texto()).as("el token no se toca").contains("123456");
     }
 
     @Test
     @DisplayName("La redirección también aplica al restablecimiento de contraseña")
     void redirigeTambienElReset() {
         CorreoDePrueba port = new CorreoDePrueba();
-        OyenteCorreos oyente = new OyenteCorreos(port, propiedades("pruebas@uni.edu"));
+        OyenteCorreos oyente = new OyenteCorreos(port, propiedades("pruebas@uni.edu"), new PlantillasCorreo());
 
         oyente.alRestablecer(new EventosCorreo.RestablecimientoRequerido(
-                UUID.randomUUID(), "luis@uni.edu", "token-456"));
+                UUID.randomUUID(), "luis@uni.edu", "Luis Gómez", "654321"));
 
         assertThat(port.enviados.get(0).destino()).isEqualTo("pruebas@uni.edu");
         assertThat(port.enviados.get(0).asunto()).startsWith("[para luis@uni.edu]");

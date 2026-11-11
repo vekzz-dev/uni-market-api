@@ -63,9 +63,14 @@ public class CorreoTransaccionalResend implements CorreoTransaccional {
 
     @Override
     public void enviar(MensajeCorreo mensaje) {
-        String cuerpo = """
+        String cuerpo = mensaje.html() == null || mensaje.html().isBlank()
+                ? """
                 {"from":%s,"to":[%s],"subject":%s,"text":%s}""".formatted(
-                json(remitente), json(mensaje.destino()), json(mensaje.asunto()), json(mensaje.texto()));
+                        json(remitente), json(mensaje.destino()), json(mensaje.asunto()), json(mensaje.texto()))
+                : """
+                {"from":%s,"to":[%s],"subject":%s,"text":%s,"html":%s}""".formatted(
+                        json(remitente), json(mensaje.destino()), json(mensaje.asunto()),
+                        json(mensaje.texto()), json(mensaje.html()));
         HttpRequest peticion;
         try {
             peticion = HttpRequest.newBuilder(api)

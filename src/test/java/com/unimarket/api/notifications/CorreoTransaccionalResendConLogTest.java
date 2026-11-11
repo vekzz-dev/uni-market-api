@@ -58,8 +58,7 @@ class CorreoTransaccionalResendConLogTest {
     }
 
     private static CorreoTransaccional.MensajeCorreo mensaje() {
-        return new CorreoTransaccional.MensajeCorreo(
-                "ana@uni.edu", "Confirma tu cuenta", "Tu token es abc123");
+        return new CorreoTransaccional.MensajeCorreo("ana@uni.edu", "Confirma tu cuenta", "Tu token es abc123", null);
     }
 
     @Test

@@ -58,18 +58,25 @@ public class ServicioRecuperacion {
      *                                 viola la política (422)
      */
     @Transactional
-    public void confirmar(String tokenCrudo, String nuevaContrasena) {
+    public void confirmar(String emailCrudo, String pin, String nuevaContrasena) {
         ServicioRegistro.exigirPolitica(nuevaContrasena);
-        TokenRestablecimientoContrasena token = restablecimientos
-                .findByHashToken(TokensSeguridad.sha256Hex(tokenCrudo))
-                .filter(t -> t.activo(Instant.now()))
-                .orElseThrow(() -> new ReglaDeNegocioException(
-                        "El token es inválido, expiró o ya fue usado."));
-        token.marcarUso(Instant.now());
-        Usuario usuario = usuarios.findById(token.getUsuarioId())
+        Usuario usuario = usuarios
+                .findByEmailIgnoreCaseAndFechaEliminacionIsNull(ServicioRegistro.normalizarEmail(emailCrudo))
                 .filter(Usuario::activa)
-                .orElseThrow(() -> new ReglaDeNegocioException(
-                        "El token es inválido, expiró o ya fue usado."));
+                .orElseThrow(() -> new ReglaDeNegocioException(ServicioRegistro.PIN_INVALIDO));
+        TokenRestablecimientoContrasena token = restablecimientos
+                .findByUsuarioIdAndFechaUsoIsNull(usuario.getId()).stream()
+                .filter(activo -> activo.activo(Instant.now()))
+                .findFirst()
+                .orElseThrow(() -> new ReglaDeNegocioException(ServicioRegistro.PIN_INVALIDO));
+        if (!TokensSeguridad.pinCoincide(pin, token.getHashToken())) {
+            token.registrarIntentoFallido();
+            if (token.agotado()) {
+                token.marcarUso(Instant.now());
+            }
+            throw new ReglaDeNegocioException(ServicioRegistro.PIN_INVALIDO);
+        }
+        token.marcarUso(Instant.now());
         usuario.setHashContrasena(contrasenas.encode(nuevaContrasena));
         sesiones.revocarTodos(usuario.getId());
     }
@@ -92,19 +99,19 @@ public class ServicioRecuperacion {
         usuario.setHashContrasena(contrasenas.encode(nueva));
     }
 
-    /** Emite el token de 60 min invalidando los activos previos en la misma transacción. */
+    /** Emite el PIN de 15 min invalidando los activos previos en la misma transacción. */
     private void emitirToken(Usuario usuario) {
         Instant ahora = Instant.now();
         restablecimientos.findByUsuarioIdAndFechaUsoIsNull(usuario.getId())
                 .forEach(previo -> previo.marcarUso(ahora));
         restablecimientos.flush();
-        String crudo = TokensSeguridad.generarCrudo();
+        String pin = TokensSeguridad.generarPin();
         TokenRestablecimientoContrasena token = new TokenRestablecimientoContrasena();
         token.setUsuarioId(usuario.getId());
-        token.setHashToken(TokensSeguridad.sha256Hex(crudo));
-        token.setFechaExpiracion(ahora.plus(60, ChronoUnit.MINUTES));
+        token.setHashToken(TokensSeguridad.sha256Hex(pin));
+        token.setFechaExpiracion(ahora.plus(EventosCorreo.VIGENCIA_PIN_MINUTOS, ChronoUnit.MINUTES));
         restablecimientos.save(token);
-        eventos.publishEvent(
-                new EventosCorreo.RestablecimientoRequerido(usuario.getId(), usuario.getEmail(), crudo));
+        eventos.publishEvent(new EventosCorreo.RestablecimientoRequerido(
+                usuario.getId(), usuario.getEmail(), usuario.getNombre(), pin));
     }
 }
