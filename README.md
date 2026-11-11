@@ -50,14 +50,14 @@ set -a && source .env && set +a   # el MISMO secreto del .env (no generes otro)
 mvn spring-boot:run
 ```
 
-> En ambos casos la API queda en `http://localhost:8080/v1` y **el token de confirmación de email sale en el log de la app** (en IntelliJ: su consola).
+> En ambos casos la API queda en `http://localhost:8080/v1` y **el PIN de confirmación de 6 dígitos sale en el log de la app** (en IntelliJ: su consola).
 
 ### Paso 3 — Flujo de humo (registro → confirmación → login)
 
 ```bash
-# Registro (201). El email de confirmación se imprime en el log de la app en dev:
+# Registro (201). El correo con el PIN de 6 dígitos se imprime en el log en dev:
 #   · IntelliJ: la consola de la aplicación
-#   · Compose:  podman logs unimarket-api | grep -i token
+#   · Compose:  podman logs unimarket-api | grep -o 'es [0-9]\{6\}\.'
 curl -s -X POST localhost:8080/v1/usuarios -H 'Content-Type: application/json' \
   -d '{"email":"ana@uni.edu","nombre":"Ana","contrasena":"secreta123"}'
 
@@ -145,7 +145,7 @@ moderar → catálogo y cómo probar Resend de verdad) está en **`docs/local-te
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**257 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**259 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 

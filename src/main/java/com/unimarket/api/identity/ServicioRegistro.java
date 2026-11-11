@@ -80,9 +80,14 @@ public class ServicioRegistro {
      * confirma el email de un solo golpe (R11, issue #8). Un fallo suma intento y al
      * agotarlos invalida el código, de modo que 10^6 combinaciones no sean atacables.
      *
+     * <p>{@code noRollbackFor} es deliberado: un PIN incorrecto lanza una excepción de
+     * negocio, y el contador de intentos tiene que quedar persistido. Sin esto la
+     * transacción se revierte, el contador vuelve a 0 y el máximo de 5 intentos no existe.
+     * En el camino de fallo no se ha mutado nada más, así que no se arrastra estado parcial.
+     *
      * @throws ReglaDeNegocioException si no coincide, expiró, se usó o agotó intentos (422)
      */
-    @Transactional
+    @Transactional(noRollbackFor = ReglaDeNegocioException.class)
     public void confirmarEmail(String emailCrudo, String pin) {
         Usuario usuario = usuarios
                 .findByEmailIgnoreCaseAndFechaEliminacionIsNull(normalizarEmail(emailCrudo))

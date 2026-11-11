@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Completada (2026-11-11; `mvn verify` EXIT=0, 257 tests, cobertura con gate) |
+| Estado | Completada (2026-11-11; `mvn verify` EXIT=0, 259 tests, cobertura con gate) |
 | Creado | 2026-11-11 |
 | Alcance | Issue #8: confirmación de email y restablecimiento de contraseña con PIN de 6 dígitos, sin enlaces; correos HTML |
 | No incluye | Cambios en el flujo de login/refresh; notificaciones distintas de confirmación y reset |
@@ -36,5 +36,7 @@
 - **L4** — Decisión: `VIGENCIA_PIN_MINUTOS` vive en `notifications` y `identity` la consume. Al revés rompería la frontera de módulos (ArchUnit: `identity → notifications`).
 - **L5** — Evidencia (2026-11-11): RED inicial por firmas cambiadas (servicios, DTOs, `MensajeCorreo`, `OyenteCorreos`). GREEN con 257 tests.
 - **L6** — Evidencia manual en contenedor: registro con `pin.prueba.…@chuwel.com` → correo redirigido a la bandeja de pruebas con `html=sí` y PIN de 6 dígitos; `confirmar` 200; reuso 422; PIN incorrecto 422.
+- **L9** — Verificación independiente (2026-11-11, `FAIL` → corregido): el contador de intentos **no se persistía**. La excepción de negocio se lanzaba dentro de la transacción y la revertía, así que `intentos` volvía a 0 y el PIN seguía válido tras cinco fallos. Mi test unitario solo probaba la entidad en memoria: no probaba nada del flujo. Corregido con `@Transactional(noRollbackFor = ReglaDeNegocioException.class)` en `confirmarEmail` y `confirmar` (mismo patrón que ya usa `ServicioSesion` para el reuso de refresh), y probado con `PinIntentosIntegrationTest`: cinco fallos → `intentos` 1..5 persistidos y el quinto consume el PIN.
+- **L10** — Verificación independiente (2026-11-11, cierre): documentación derivada puesta al día (DBDD: `intentos` y TTL 15 min; SDD: flujo POST con PIN; README y guía local: ya no hablan de token). Advisory aceptado y no corregido: un `GET` sobre la ruta eliminada devuelve `500` en vez de `405`; es el fallback genérico preexistente y ningún cliente generado lo llamará.
 - **L7** — Nota: el rate limit (5/min) y el máximo de intentos (5) se solapan; un usuario que falla cinco veces seguidas verá `429` en el sexto intento. Aceptado: el código queda igualmente invalidado.
 - **L8** — Rompe el cliente: se elimina el `GET` con token y cambian dos cuerpos. Requiere `contract:sync` + `api:generate` y pantalla de código en el frontend.

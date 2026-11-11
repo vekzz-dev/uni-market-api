@@ -57,7 +57,7 @@ public class ServicioRecuperacion {
      * @throws ReglaDeNegocioException si el token es inválido/expiró/se usó o la clave
      *                                 viola la política (422)
      */
-    @Transactional
+    @Transactional(noRollbackFor = ReglaDeNegocioException.class)
     public void confirmar(String emailCrudo, String pin, String nuevaContrasena) {
         ServicioRegistro.exigirPolitica(nuevaContrasena);
         Usuario usuario = usuarios

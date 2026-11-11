@@ -43,8 +43,8 @@ NOTIFICACIONES_DESTINO_PRUEBA=tu-correo@tudominio.com  # opcional: ver abajo
 
 | Modo | Qué hace |
 |---|---|
-| `log` (default) | Imprime el correo con el token en el log. No envía nada |
-| `resend` | Envía por Resend. El token NO aparece en el log |
+| `log` (default) | Imprime el correo (y su PIN) en el log. No envía nada |
+| `resend` | Envía por Resend. El PIN NO aparece en el log |
 | `resend+log` | Envía por Resend **y** deja el token en el log (recomendado en local) |
 
 > **Sin dominio verificado en Resend** solo puedes enviar desde `onboarding@resend.dev` y
@@ -123,7 +123,8 @@ curl -s -X POST localhost:8080/v1/usuarios \
   -d '{"email":"ana@uni.edu","nombre":"Ana Pérez","contrasena":"secreta123"}'
 ```
 
-Responde `201`. El email de confirmación sale en el log en `dev`/`resend+log`.
+Responde `201`. El correo con el **PIN de 6 dígitos** sale en el log en `dev`/`resend+log`
+(y llega al buzón real si configuraste `NOTIFICACIONES_DESTINO_PRUEBA`).
 
 ### 4.2 PIN de confirmación desde el log
 
@@ -213,7 +214,7 @@ Con `NOTIFICACIONES_PROVEEDOR=resend+log` y credenciales válidas:
 
 1. Registra una cuenta con una dirección de prueba:
    `delivered+prueba@resend.dev`.
-2. Mira el log: debe aparecer el mensaje con el token y **ningún** `WARN`.
+2. Mira el log: debe aparecer el mensaje con el PIN y **ningún** `WARN`.
 
 ```bash
 podman logs --since 5m unimarket-api | grep -iE "Correo transaccional|fallido|descartado"
@@ -224,11 +225,11 @@ Qué esperar según el caso:
 | Situación | Log |
 |---|---|
 | Credenciales válidas, dirección de prueba | `Correo transaccional (dev): … token=…` y nada más |
-| Destinatario real sin dominio verificado | El token + `3 × WARN` y `Correo descartado tras 3 intentos` |
+| Destinatario real sin dominio verificado | El PIN + `3 × WARN` y `Correo descartado tras 3 intentos` |
 | Clave inválida | `WARN … Resend respondió 401` en los 3 intentos |
 | Sin `RESEND_API_KEY` con `resend+log` | La app **no arranca** y dice qué variable falta |
 
-El log se escribe **antes** del envío: aunque el proveedor falle, el token sigue
+El log se escribe **antes** del envío: aunque el proveedor falle, el PIN sigue
 disponible para confirmar la cuenta. En producción el modo `resend+log` está prohibido
 porque imprimiría tokens crudos en los logs.
 
@@ -241,7 +242,7 @@ porque imprimiría tokens crudos en los logs.
 | `define JWT_SECRETO en .env` | Falta el `.env` o la variable. Genera el secreto del paso 2 |
 | Cambié `.env` y no surte efecto | Compose no recrea el contenedor: `podman compose up -d --force-recreate api` |
 | `429` al hacer login | Límite de 5/min por IP y email. Espera un minuto o sube `RATE_LIMIT_INTENTOS` |
-| El token no aparece en el log | Estás en modo `resend` (sin log) o en `prod`. Usa `log` o `resend+log` |
+| El PIN no aparece en el log | Estás en modo `resend` (sin log) o en `prod`. Usa `log` o `resend+log` |
 | `Broken pipe` con Podman rootless | El servicio necesita no tener timeout de inactividad; ver `odd/tasks/hardening-post-catalog.md` |
 | Quiero empezar de cero | `podman compose down -v && podman compose up -d --build` (borra BD y medios) |
 | El puerto 8080 está ocupado | `podman compose stop api` o cambia el mapeo en `compose.yaml` |

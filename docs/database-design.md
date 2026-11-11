@@ -132,7 +132,8 @@ No declara `fecha_actualizacion` (los mensajes son inmutables).
 | las 3 | `id` | `uuid` | NO | `gen_random_uuid()` | PK |
 | las 3 | `usuario_id` | `uuid` | NO | — | FK → `usuarios(id)` |
 | las 3 | `hash_token` | `text` | NO | — | UNIQUE |
-| las 3 | `fecha_expiracion` | `timestamptz` | NO | — | NOT NULL (24 h / 60 min / 30 días) |
+| las 3 | `fecha_expiracion` | `timestamptz` | NO | — | NOT NULL (PIN confirmación 15 min / PIN reset 15 min / refresh 30 días) |
+| confirmación y reset | `intentos` | `integer` | NO | `0` | Intentos fallidos del PIN; CHECK `>= 0`; a los 5 el código se invalida |
 | las 3 | `fecha_uso` | `timestamptz` | SÍ | — | `NULL` = activo |
 | las 3 | `fecha_creacion` | `timestamptz` | NO | `now()` | |
 | `tokens_refresh` | `familia_id` | `uuid` | NO | — | Agrupa la familia de rotación |
@@ -252,9 +253,10 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 |---|---|---|---|
 | `id` | Identificador de la fila de token. | NO / `gen_random_uuid()` | |
 | `usuario_id` | Cuenta propietaria del token. | NO / — | El token enviado por email siempre pertenece al destinatario. |
-| `hash_token` | Hash SHA-256 del token crudo. | NO / — | UNIQUE; nunca se persiste plaintext; la búsqueda es por hash del valor presentado. |
-| `fecha_expiracion` | Caducidad obligatoria. | NO / — | Confirmación 24 h; reset 60 min; refresh 30 días. |
+| `hash_token` | Hash SHA-256 del PIN (confirmación/reset) o del token (refresh). | NO / — | UNIQUE; nunca se persiste plaintext; la verificación es por hash del valor presentado. |
+| `fecha_expiracion` | Caducidad obligatoria. | NO / — | PIN de confirmación 15 min; PIN de reset 15 min; refresh 30 días. |
 | `fecha_uso` / `fecha_creacion` | Consumo de un solo uso / emisión del token. | SÍ `NULL` / NO `now()` | `NULL` = activo; se establece en la misma transacción del consumo. A lo sumo un token activo por usuario y propósito. |
+| `intentos` (confirmación y reset) | Fallos acumulados del PIN; al llegar a 5 el código se invalida aunque no haya expirado. | NO / `0` | CHECK `>= 0`; el incremento debe persistirse aunque la verificación falle. |
 | `familia_id` (refresh) | Familia de rotación; agrupa los refresh de una sesión. El reuso de un token ya rotado revoca la familia entera. | NO / — | `fecha_revocacion` (refresh, `NULL` = sin revocar) marca la revocación server-side: logout o reuso detectado. |
 ## 5. Data Integrity and Business Rules
 
@@ -289,7 +291,7 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | Herramienta y nomenclatura | Flyway, integrada en el arranque de la aplicación backend (Spring Boot + Spring Data). Migraciones versionadas `V{n}__descripcion.sql` (doble guion bajo). |
 | Orden de aplicación | `V1` → `V2` → `V3` → `V4` → `V5` → `V6` → `V7`, estrictamente secuencial. |
 | Inmutabilidad (forward-only) | Una migración aplicada NUNCA se edita: las correcciones se expresan como una migración nueva `V{n}` con número superior. |
-| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. `V7__pin_intentos.sql`: columna `intentos` en las dos tablas de PIN, con CHECK no negativo (R11). `V6__indices_trgm_expresion_catalogo.sql`: recrea los dos GIN del catálogo sobre `lower(...)`, la expresión que realmente consulta la búsqueda. |
+| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. `V6__indices_trgm_expresion_catalogo.sql`: recrea los dos GIN del catálogo sobre `lower(...)`, la expresión que realmente consulta la búsqueda. `V7__pin_intentos.sql`: columna `intentos` en las dos tablas de PIN, con CHECK no negativo (R11). |
 | Seeds idempotentes | El seed usa `INSERT ... ON CONFLICT (nombre) DO NOTHING`: re-ejecutarlo no duplica categorías y el conteo se mantiene en 6. |
 | Reproducibilidad | El esquema completo se produce aplicando `V1` a `V7` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
 | Verificación | Tras la aplicación: 8 tablas presentes, 18 índices en `pg_indexes` (13 de negocio + 2 de búsqueda + 3 de tokens), los 17 CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |

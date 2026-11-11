@@ -98,9 +98,9 @@ sequenceDiagram
     API->>DB: INSERT usuarios (rol=miembro, hash BCrypt)
     API->>DB: INSERT tokens_verificacion_email (SHA-256, exp 24h)
     API-->>C: 201 (sin token de sesión)
-    API-)M: email con token crudo (post-commit, evento)
-    C->>API: GET confirmación con token crudo
-    API->>DB: lookup por hash, valida exp/uso, fecha_uso=now() (transacción)
+    API-)M: email HTML con PIN de 6 dígitos (post-commit, evento)
+    C->>API: POST confirmación con email + pin
+    API->>DB: lookup activo, compara hash, suma intento si falla, fecha_uso=now() (transacción)
     API->>DB: fecha_verificacion_email=now()
     API-->>C: 200
     C->>API: POST /v1/auth/login
