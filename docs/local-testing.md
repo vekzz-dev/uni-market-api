@@ -38,6 +38,7 @@ Ese es el mínimo. Para el modo de correo, añade:
 NOTIFICACIONES_PROVEEDOR=resend+log     # log | resend | resend+log
 RESEND_API_KEY=re_tu_clave
 RESEND_REMITENTE=onboarding@resend.dev  # sin dominio verificado, este es el único remitente
+NOTIFICACIONES_DESTINO_PRUEBA=tu-correo@tudominio.com  # opcional: ver abajo
 ```
 
 | Modo | Qué hace |
@@ -47,10 +48,26 @@ RESEND_REMITENTE=onboarding@resend.dev  # sin dominio verificado, este es el ún
 | `resend+log` | Envía por Resend **y** deja el token en el log (recomendado en local) |
 
 > **Sin dominio verificado en Resend** solo puedes enviar desde `onboarding@resend.dev` y
-> con entrega real únicamente a direcciones de prueba (`delivered@resend.dev`) o al email
-> de tu cuenta. Para cualquier otra dirección Resend responde error: verás tres `WARN` en
-> el log, pero **el token ya está impreso**, así que puedes confirmar la cuenta igual.
-> Para usar `no-reply@tudominio.com` necesitas verificar el dominio en Resend.
+> con entrega real únicamente al email de tu cuenta de Resend (y a las direcciones de
+> prueba `delivered@resend.dev`). Cualquier otra dirección recibe un `403`: verás tres
+> `WARN` en el log, pero **el token ya está impreso**, así que puedes confirmar la cuenta
+> igual. Para usar `no-reply@tudominio.com` necesitas verificar el dominio en Resend.
+
+### `NOTIFICACIONES_DESTINO_PRUEBA`: una sola bandeja para todo
+
+Si quieres comprobar la entrega real sin depender de la dirección con la que registres,
+define la bandeja que debe recibir **todos** los correos:
+
+```bash
+NOTIFICACIONES_DESTINO_PRUEBA=tu-correo@tudominio.com
+```
+
+Aunque registres `ana@uni.edu` o una dirección inventada, el correo va a esa bandeja y el
+destinatario original se antepone en el asunto (`[para ana@uni.edu] Confirma tu cuenta…`),
+así no pierdes el rastro. Vacío = comportamiento normal.
+
+> Es una ayuda de desarrollo: en `prod` la app **no arranca** si la variable tiene valor,
+> porque desviaría correos de usuarios reales.
 
 `.env` nunca se commitea. Si una clave se expone (por ejemplo, pegada en un chat),
 rótala en el panel del proveedor y actualiza el archivo.

@@ -52,7 +52,7 @@ class CorreoTransaccionalResendConLogTest {
 
     private CorreoTransaccionalResendConLog adaptador(String baseUrl) {
         PropiedadesNotificaciones propiedades = new PropiedadesNotificaciones(
-                "resend+log", Duration.ofMinutes(2),
+                "resend+log", Duration.ofMinutes(2), "",
                 new PropiedadesNotificaciones.Resend("clave-de-prueba", "no-reply@uni.edu", baseUrl));
         return new CorreoTransaccionalResendConLog(propiedades);
     }

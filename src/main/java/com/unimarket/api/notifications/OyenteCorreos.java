@@ -21,9 +21,11 @@ public class OyenteCorreos {
     static final int MAX_INTENTOS = 3;
 
     private final CorreoTransaccional correos;
+    private final PropiedadesNotificaciones propiedades;
 
-    public OyenteCorreos(CorreoTransaccional correos) {
+    public OyenteCorreos(CorreoTransaccional correos, PropiedadesNotificaciones propiedades) {
         this.correos = correos;
+        this.propiedades = propiedades;
     }
 
     /** Confirmación de registro: el token crudo viaja una sola vez, por email (R11). */
@@ -48,9 +50,10 @@ public class OyenteCorreos {
     }
 
     private void enviarConReintentos(CorreoTransaccional.MensajeCorreo mensaje) {
+        CorreoTransaccional.MensajeCorreo enviado = redirigido(mensaje);
         for (int intento = 1; intento <= MAX_INTENTOS; intento++) {
             try {
-                correos.enviar(mensaje);
+                correos.enviar(enviado);
                 return;
             } catch (Exception e) {
                 log.warn("Envío de correo fallido (intento {}/{}): {}",
@@ -60,7 +63,24 @@ public class OyenteCorreos {
                 }
             }
         }
-        log.error("Correo descartado tras {} intentos para {}", MAX_INTENTOS, mensaje.destino());
+        log.error("Correo descartado tras {} intentos para {}", MAX_INTENTOS, enviado.destino());
+    }
+
+    /**
+     * Redirección de pruebas ({@code NOTIFICACIONES_DESTINO_PRUEBA}): TODOS los correos van a
+     * una sola bandeja, sea cual sea la cuenta registrada, para verificar la entrega real sin
+     * dominio verificado. El destinatario original viaja en el asunto para no perder el rastro.
+     * En producción está prohibido (la Guardia aborta) porque desviaría correos de usuarios.
+     */
+    private CorreoTransaccional.MensajeCorreo redirigido(CorreoTransaccional.MensajeCorreo mensaje) {
+        String destino = propiedades.destinoDePruebaOPorDefecto();
+        if (destino.isEmpty()) {
+            return mensaje;
+        }
+        return new CorreoTransaccional.MensajeCorreo(
+                destino,
+                "[para " + mensaje.destino() + "] " + mensaje.asunto(),
+                mensaje.texto());
     }
 
     private static void dormir(long milis) {

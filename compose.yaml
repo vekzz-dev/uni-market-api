@@ -57,6 +57,8 @@ services:
       NOTIFICACIONES_COOLDOWN_REENVIO: ${NOTIFICACIONES_COOLDOWN_REENVIO:-2m}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_REMITENTE: ${RESEND_REMITENTE:-no-reply@example.com}
+      # Solo local: redirige TODOS los correos a una bandeja para probar la entrega real.
+      NOTIFICACIONES_DESTINO_PRUEBA: ${NOTIFICACIONES_DESTINO_PRUEBA:-}
       RATE_LIMIT_INTENTOS: ${RATE_LIMIT_INTENTOS:-5}
     ports:
       - "8080:8080"

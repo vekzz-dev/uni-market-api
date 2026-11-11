@@ -10,10 +10,20 @@ import java.time.Duration;
  * (PRD §5, N5) y credenciales solo por entorno.
  */
 @ConfigurationProperties("app.notificaciones")
-public record PropiedadesNotificaciones(String proveedor, Duration cooldownReenvio, Resend resend) {
+public record PropiedadesNotificaciones(
+        String proveedor, Duration cooldownReenvio, String destinoDePrueba, Resend resend) {
 
     /** Credenciales y remitente de Resend: solo por variables de entorno. */
     public record Resend(String apiKey, String remitente, String baseUrl) {
+    }
+
+    /**
+     * Dirección que RECIBE todos los correos en local, sea cual sea la cuenta registrada
+     * (solo para probar la entrega sin dominio verificado). Prohibida en producción: la
+     * Guardia aborta el arranque. Vacía = comportamiento normal.
+     */
+    public String destinoDePruebaOPorDefecto() {
+        return destinoDePrueba == null ? "" : destinoDePrueba.strip();
     }
 
     /** Cooldown efectivo de reenvío: 2 minutos si no hay valor configurado (PRD §5). */

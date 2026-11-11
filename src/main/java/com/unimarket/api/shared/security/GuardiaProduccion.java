@@ -27,7 +27,8 @@ public class GuardiaProduccion {
             @Value("${app.media.r2.url-publica:}") String r2UrlPublica,
             @Value("${app.notificaciones.proveedor:}") String proveedorCorreo,
             @Value("${app.notificaciones.resend.api-key:}") String resendApiKey,
-            @Value("${app.notificaciones.resend.remitente:}") String resendRemitente) {
+            @Value("${app.notificaciones.resend.remitente:}") String resendRemitente,
+            @Value("${app.notificaciones.destino-de-prueba:}") String destinoDePrueba) {
         exigir(jwt != null && noVacio(jwt.secreto()), "JWT_SECRETO (firma de tokens)");
         if ("r2".equals(proveedorMedia)) {
             exigir(noVacio(r2Endpoint), "MEDIA_R2_ENDPOINT (storage R2)");
@@ -36,6 +37,8 @@ public class GuardiaProduccion {
             exigir(noVacio(r2Secret), "MEDIA_R2_SECRET_ACCESS_KEY (storage R2)");
             exigir(noVacio(r2UrlPublica), "MEDIA_R2_URL_PUBLICA (storage R2)");
         }
+        exigir(destinoDePrueba == null || destinoDePrueba.isBlank(),
+                "NOTIFICACIONES_DESTINO_PRUEBA vacía (redirigir todos los correos a una bandeja es solo para local)");
         exigir(!"resend+log".equals(proveedorCorreo),
                 "NOTIFICACIONES_PROVEEDOR distinto de 'resend+log' (ese modo imprime tokens crudos en el log y es solo para local)");
         if ("resend".equals(proveedorCorreo)) {

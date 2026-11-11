@@ -159,6 +159,7 @@ Ejecuta la suite completa (**242 tests**) contra **PostgreSQL 18 real** (Testcon
 | `MEDIA_R2_ENDPOINT` / `MEDIA_R2_BUCKET` / `MEDIA_R2_ACCESS_KEY_ID` / `MEDIA_R2_SECRET_ACCESS_KEY` / `MEDIA_R2_URL_PUBLICA` | *(vacías)* | Cloudflare R2 (prod) |
 | `NOTIFICACIONES_PROVEEDOR` | `log` | `log` (consola, dev) · `resend` (prod) · `resend+log` (local: envía de verdad **y** deja el token en el log) |
 | `RESEND_API_KEY` / `RESEND_REMITENTE` | *(vacías)* | Resend (prod) |
+| `NOTIFICACIONES_DESTINO_PRUEBA` | *(vacía)* | Solo local: TODOS los correos van a esa bandeja (el destinatario original queda en el asunto). Prohibido en `prod` |
 | `NOTIFICACIONES_COOLDOWN_REENVIO` | `2m` | Cooldown del reenvío de confirmación |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Perfil activo: `dev` o `prod` (prod es fail-fast con las credenciales de arriba) |
 

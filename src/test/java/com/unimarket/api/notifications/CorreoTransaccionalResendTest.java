@@ -47,7 +47,7 @@ class CorreoTransaccionalResendTest {
 
     private CorreoTransaccionalResend adaptador(String baseUrl) {
         PropiedadesNotificaciones propiedades = new PropiedadesNotificaciones(
-                "resend", Duration.ofMinutes(2),
+                "resend", Duration.ofMinutes(2), "",
                 new PropiedadesNotificaciones.Resend("clave-de-prueba", "no-reply@uni.edu", baseUrl));
         return new CorreoTransaccionalResend(HttpClient.newHttpClient(), propiedades);
     }

@@ -25,7 +25,7 @@ class GuardiaProduccionTest {
                                              String r2Secret, String r2Url,
                                              String resendKey, String resendRemitente) {
         return new GuardiaProduccion(jwt, media, r2Endpoint, r2Bucket, r2Key, r2Secret, r2Url,
-                correo, resendKey, resendRemitente);
+                correo, resendKey, resendRemitente, "");
     }
 
     private static GuardiaProduccion completa() {
@@ -52,6 +52,15 @@ class GuardiaProduccionTest {
                     "https://e", "b", "k", "s", "https://u", "re_1", "r@u.edu"))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("JWT_SECRETO");
+        }
+
+        @Test
+        @DisplayName("Producción rechaza redirigir todos los correos a una bandeja de pruebas")
+        void destinoDePruebaProhibidoEnProd() {
+            assertThatThrownBy(() -> new GuardiaProduccion(jwt("suficiente-para-pruebas"), "r2", "resend",
+                    "https://e", "b", "k", "s", "https://u", "re_1", "r@u.edu", "yo@uni.edu"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("NOTIFICACIONES_DESTINO_PRUEBA");
         }
 
         @Test

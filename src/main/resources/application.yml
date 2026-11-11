@@ -57,6 +57,10 @@ app:
     proveedor: ${NOTIFICACIONES_PROVEEDOR:log}
     # Cooldown de reenvío de confirmación (PRD §5, N5).
     cooldown-reenvio: ${NOTIFICACIONES_COOLDOWN_REENVIO:2m}
+    # Solo local: TODOS los correos van a esta bandeja, sea cual sea la cuenta registrada
+    # (el destinatario original se antepone al asunto). Vacío = comportamiento normal.
+    # La GuardiaProduccion aborta el arranque en prod si tiene valor.
+    destino-de-prueba: ${NOTIFICACIONES_DESTINO_PRUEBA:}
     resend:
       api-key: ${RESEND_API_KEY:}
       remitente: ${RESEND_REMITENTE:no-reply@example.com}
