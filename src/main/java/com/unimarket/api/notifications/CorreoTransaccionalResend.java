@@ -1,5 +1,6 @@
 package com.unimarket.api.notifications;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -7,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 /**
  * Adaptador Resend para prod (D12): email vía API HTTP con {@code HttpClient} del JDK
@@ -19,13 +21,28 @@ public class CorreoTransaccionalResend implements CorreoTransaccional {
 
     private static final String API_POR_DEFECTO = "https://api.resend.com/emails";
 
+    /**
+     * Tiempos máximos del envío. Sin ellos el cliente JDK espera para siempre: si la red del
+     * contenedor no alcanza al proveedor (IPv6 sin ruta, firewall, DNS que resuelve pero no
+     * conecta), el hilo asíncrono queda colgado y el reintento del oyente nunca ocurre. Un
+     * correo es best-effort: mejor fallar en segundos y dejar el rastro en el log.
+     */
+    static final Duration TIEMPO_CONEXION = Duration.ofSeconds(5);
+    static final Duration TIEMPO_RESPUESTA = Duration.ofSeconds(10);
+
     private final HttpClient http;
     private final String apiKey;
     private final String remitente;
     private final URI api;
 
+    /**
+     * Constructor de producción. Lleva {@code @Autowired} explícito porque la clase tiene un
+     * segundo constructor (el de tests, con {@code HttpClient} inyectable): con varios
+     * constructores y ninguno anotado, Spring no sabe cuál usar y el contexto no arranca.
+     */
+    @Autowired
     public CorreoTransaccionalResend(PropiedadesNotificaciones propiedades) {
-        this(HttpClient.newHttpClient(), propiedades);
+        this(HttpClient.newBuilder().connectTimeout(TIEMPO_CONEXION).build(), propiedades);
     }
 
     CorreoTransaccionalResend(HttpClient http, PropiedadesNotificaciones propiedades) {
@@ -54,6 +71,7 @@ public class CorreoTransaccionalResend implements CorreoTransaccional {
             peticion = HttpRequest.newBuilder(api)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
+                    .timeout(TIEMPO_RESPUESTA)
                     .POST(HttpRequest.BodyPublishers.ofString(cuerpo))
                     .build();
             HttpResponse<String> respuesta = http.send(peticion, HttpResponse.BodyHandlers.ofString());

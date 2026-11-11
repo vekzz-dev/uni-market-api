@@ -4,9 +4,11 @@
 # Los adaptadores siguen siendo sobreescribibles por variables de entorno.
 app:
   media:
-    proveedor: filesystem
+    # Overridable por entorno: un valor literal aquí GANA sobre el placeholder del
+    # application.yml base y deja la variable inservible en el perfil dev.
+    proveedor: ${MEDIA_PROVEEDOR:filesystem}
   notificaciones:
-    proveedor: log
+    proveedor: ${NOTIFICACIONES_PROVEEDOR:log}
   seguridad:
     cors:
       # Navegador en dev: cualquier puerto local (Vite 5173, CRA 3000, Hoppscotch…).

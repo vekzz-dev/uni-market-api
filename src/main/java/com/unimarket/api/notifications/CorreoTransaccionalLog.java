@@ -1,7 +1,5 @@
 package com.unimarket.api.notifications;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -14,11 +12,8 @@ import org.springframework.stereotype.Service;
 @ConditionalOnProperty(name = "app.notificaciones.proveedor", havingValue = "log", matchIfMissing = true)
 public class CorreoTransaccionalLog implements CorreoTransaccional {
 
-    private static final Logger log = LoggerFactory.getLogger(CorreoTransaccionalLog.class);
-
     @Override
     public void enviar(MensajeCorreo mensaje) {
-        log.info("Correo transaccional (dev): destino={} asunto={} texto={}",
-                mensaje.destino(), mensaje.asunto(), mensaje.texto());
+        RegistroCorreoDev.registrar(mensaje);
     }
 }

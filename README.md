@@ -103,7 +103,7 @@ Notas:
 | Perfil | Adaptadores | Cuándo |
 |---|---|---|
 | **`dev`** (default) | Medios en filesystem, emails a consola | Desarrollo local (IntelliJ o compose sin tocar nada) |
-| **`prod`** | Medios en **R2**, emails vía **Resend** | Despliegue real. Es **fail-fast**: si falta `JWT_SECRETO`, `RESEND_API_KEY`, `RESEND_REMITENTE` o cualquier clave de R2, la app **no arranca** y dice exactamente cuál falta |
+| **`prod`** | Medios en **R2**, emails vía **Resend** | Despliegue real. Es **fail-fast**: si falta `JWT_SECRETO`, `RESEND_API_KEY`, `RESEND_REMITENTE` o cualquier clave de R2, la app **no arranca** y dice exactamente cuál falta. Rechaza `resend+log` (imprimiría tokens crudos en el log) |
 
 ```bash
 # Simular el arranque de producción (fallará si no están las credenciales — es lo correcto):
@@ -114,6 +114,24 @@ podman compose up -d api
 ```
 
 El perfil activo también se fija con la variable `SPRING_PROFILES_ACTIVE` en IntelliJ si algún día lo necesitas.
+
+### Resend en local (envía de verdad y deja el token en el log)
+
+Útil para comprobar que el proveedor entrega sin depender del buzón para confirmar la cuenta:
+
+```bash
+# .env — añade tus credenciales reales de Resend
+NOTIFICACIONES_PROVEEDOR=resend+log
+RESEND_API_KEY=re_tu_clave
+RESEND_REMITENTE=no-reply@tu-dominio-verificado.com
+
+podman compose up -d --force-recreate api   # compose solo pasa las variables que declara
+podman logs -f unimarket-api | grep -i "Correo transaccional"
+```
+
+> `docker/podman compose up -d` no recrea el contenedor si solo cambiaste `.env`: añade `--force-recreate` o el contenedor seguirá con las variables viejas.
+
+Con `resend+log` el correo sale por Resend **y** el mensaje completo (token incluido) queda en el log; el log se escribe antes del envío, así que un fallo del proveedor no te deja sin token. En `prod` este modo está prohibido a propósito.
 
 ## Pruebas
 
@@ -134,7 +152,7 @@ Ejecuta la suite completa (**242 tests**) contra **PostgreSQL 18 real** (Testcon
 | `MEDIA_PROVEEDOR` | `filesystem` | `filesystem` (dev) o `r2` (prod) |
 | `MEDIA_DIR` | `~/.uni-market` | Raíz del filesystem de medios en dev |
 | `MEDIA_R2_ENDPOINT` / `MEDIA_R2_BUCKET` / `MEDIA_R2_ACCESS_KEY_ID` / `MEDIA_R2_SECRET_ACCESS_KEY` / `MEDIA_R2_URL_PUBLICA` | *(vacías)* | Cloudflare R2 (prod) |
-| `NOTIFICACIONES_PROVEEDOR` | `log` | `log` (consola, dev) o `resend` (prod) |
+| `NOTIFICACIONES_PROVEEDOR` | `log` | `log` (consola, dev) · `resend` (prod) · `resend+log` (local: envía de verdad **y** deja el token en el log) |
 | `RESEND_API_KEY` / `RESEND_REMITENTE` | *(vacías)* | Resend (prod) |
 | `NOTIFICACIONES_COOLDOWN_REENVIO` | `2m` | Cooldown del reenvío de confirmación |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Perfil activo: `dev` o `prod` (prod es fail-fast con las credenciales de arriba) |

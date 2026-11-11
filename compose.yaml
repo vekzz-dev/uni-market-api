@@ -50,6 +50,14 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       # Medios persistentes del contenedor (filesystem adapter, D14).
       MEDIA_DIR: /data/media
+      # Correo: `log` (default, token en consola), `resend` o `resend+log` (local: envía y
+      # además imprime el token). Estas variables NO se heredan solas desde .env: compose
+      # solo pasa las que declara aquí.
+      NOTIFICACIONES_PROVEEDOR: ${NOTIFICACIONES_PROVEEDOR:-log}
+      NOTIFICACIONES_COOLDOWN_REENVIO: ${NOTIFICACIONES_COOLDOWN_REENVIO:-2m}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_REMITENTE: ${RESEND_REMITENTE:-no-reply@example.com}
+      RATE_LIMIT_INTENTOS: ${RATE_LIMIT_INTENTOS:-5}
     ports:
       - "8080:8080"
     volumes:

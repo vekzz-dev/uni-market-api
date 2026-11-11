@@ -49,7 +49,10 @@ app:
     rate-limit:
       intentos-por-minuto: ${RATE_LIMIT_INTENTOS:5}
   # Correo transaccional (SDD §10, D12): `log` imprime el token en consola (dev);
-  # `resend` envía vía API HTTP con RESEND_API_KEY y RESEND_REMITENTE (prod).
+  # `resend` envía vía API HTTP con RESEND_API_KEY y RESEND_REMITENTE (prod);
+  # `resend+log` (solo local) envía de verdad Y deja el token en el log. La GuardiaProduccion
+  # rechaza `resend+log` en el perfil prod: un token crudo en logs de producción es una
+  # credencial filtrada.
   notificaciones:
     proveedor: ${NOTIFICACIONES_PROVEEDOR:log}
     # Cooldown de reenvío de confirmación (PRD §5, N5).

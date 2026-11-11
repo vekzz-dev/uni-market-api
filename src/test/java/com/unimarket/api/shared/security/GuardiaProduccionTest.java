@@ -55,6 +55,15 @@ class GuardiaProduccionTest {
         }
 
         @Test
+        @DisplayName("Producción rechaza el modo resend+log: imprimiría tokens crudos en el log")
+        void resendConLogProhibidoEnProd() {
+            assertThatThrownBy(() -> guardia(jwt("suficiente-para-pruebas"), "r2", "resend+log",
+                    "https://e", "b", "k", "s", "https://u", "re_1", "r@u.edu"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("resend+log");
+        }
+
+        @Test
         @DisplayName("R2 activo sin credenciales aborta nombrando la variable faltante")
         void r2Incompleto() {
             assertThatThrownBy(() -> guardia(jwt("suficiente-para-pruebas"), "r2", "log",

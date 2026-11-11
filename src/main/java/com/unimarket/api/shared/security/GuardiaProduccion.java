@@ -36,6 +36,8 @@ public class GuardiaProduccion {
             exigir(noVacio(r2Secret), "MEDIA_R2_SECRET_ACCESS_KEY (storage R2)");
             exigir(noVacio(r2UrlPublica), "MEDIA_R2_URL_PUBLICA (storage R2)");
         }
+        exigir(!"resend+log".equals(proveedorCorreo),
+                "NOTIFICACIONES_PROVEEDOR distinto de 'resend+log' (ese modo imprime tokens crudos en el log y es solo para local)");
         if ("resend".equals(proveedorCorreo)) {
             exigir(noVacio(resendApiKey), "RESEND_API_KEY (email)");
             exigir(noVacio(resendRemitente), "RESEND_REMITENTE (email)");
