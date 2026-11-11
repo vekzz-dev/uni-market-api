@@ -133,6 +133,11 @@ podman logs -f unimarket-api | grep -i "Correo transaccional"
 
 Con `resend+log` el correo sale por Resend **y** el mensaje completo (token incluido) queda en el log; el log se escribe antes del envío, así que un fallo del proveedor no te deja sin token. En `prod` este modo está prohibido a propósito.
 
+## Guía de pruebas locales
+
+El paso a paso completo (stack en contenedores, flujo de humo, roles por SQL, publicar →
+moderar → catálogo y cómo probar Resend de verdad) está en **`docs/local-testing.md`**.
+
 ## Pruebas
 
 ```bash
