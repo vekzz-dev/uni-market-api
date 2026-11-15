@@ -75,6 +75,7 @@ public class ControladorModeracion {
             @PathVariable UUID denunciaId,
             @Valid @RequestBody DtosModeracion.ResolucionRequest cuerpo) {
         return ResponseEntity.status(HttpStatus.OK).body(
-                moderacion.resolver(denunciaId, cuerpo.estado(), UUID.fromString(jwt.getSubject())));
+                moderacion.resolver(
+                        denunciaId, cuerpo.estado(), cuerpo.motivo(), UUID.fromString(jwt.getSubject())));
     }
 }

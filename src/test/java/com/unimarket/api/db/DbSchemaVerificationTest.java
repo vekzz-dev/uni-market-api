@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @Tag("integration")
-@DisplayName("Esquema de BD: Flyway V1–V8 sobre PostgreSQL 18 (Testcontainers)")
+@DisplayName("Esquema de BD: Flyway V1–V9 sobre PostgreSQL 18 (Testcontainers)")
 class DbSchemaVerificationTest {
 
     /** Las 8 tablas del DBDD §1: 5 de negocio + 3 de tokens. */
@@ -79,7 +79,7 @@ class DbSchemaVerificationTest {
             "idx_denuncias_estado_creacion");
 
     /**
-     * Los 21 CHECKs nombrados del DBDD §3.2 como pares {@code tabla.nombre}: son 22 filas
+     * Los 22 CHECKs nombrados del DBDD §3.2 como pares {@code tabla.nombre}: son 23 filas
      * de {@code pg_constraint} porque {@code chk_nombre_no_vacio} existe en {@code usuarios}
      * y en {@code anuncios}.
      */
@@ -103,6 +103,7 @@ class DbSchemaVerificationTest {
             "denuncias.denuncias_estado_check",
             "denuncias.chk_detalle_obligatorio_en_otro",
             "denuncias.chk_denuncia_resolucion_consistente",
+            "denuncias.chk_motivo_resolucion_solo_resuelta",
             "conversaciones.chk_conversacion_no_propia",
             "mensajes.chk_mensaje_no_vacio");
 
@@ -135,13 +136,13 @@ class DbSchemaVerificationTest {
         }
 
         @Test
-        @DisplayName("Flyway aplica V1 a V8 desde la configuración de la aplicación")
-        void flyway_shouldApplyEightMigrations_whenContextStarts() {
+        @DisplayName("Flyway aplica V1 a V9 desde la configuración de la aplicación")
+        void flyway_shouldApplyNineMigrations_whenContextStarts() {
             List<String> versiones = jdbcTemplate.queryForList(
                     "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                     String.class);
 
-            assertThat(versiones).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
+            assertThat(versiones).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
         }
 
         @Test
@@ -200,7 +201,7 @@ class DbSchemaVerificationTest {
 
         @Test
         @DisplayName("Los 17 CHECKs nombrados existen en pg_constraint (contype='c')")
-        void checks_shouldExistTheTwentyOne_whenMigrationsApplied() {
+        void checks_shouldExistTheTwentyTwo_whenMigrationsApplied() {
             List<Chequeo> chequeos = chequeos();
 
             List<String> encontrados = chequeos.stream().map(Chequeo::referencia).sorted().toList();

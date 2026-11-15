@@ -46,6 +46,9 @@ public class Denuncia {
 
     private Instant fechaResolucion;
 
+    /** Justificación del cierre (opcional): "duplicado", "no procede", etc. (R19). */
+    private String motivoResolucion;
+
     /** Constructor para JPA. */
     protected Denuncia() {
     }
@@ -70,7 +73,7 @@ public class Denuncia {
      * Cierra la denuncia con auditoría. Solo se resuelve una denuncia {@code abierta}:
      * reabrir o re-resolver sería perder el rastro de quién decidió primero.
      */
-    void resolver(EstadoDenuncia nuevo, UUID revisorId) {
+    void resolver(EstadoDenuncia nuevo, String motivoResolucion, UUID revisorId) {
         if (nuevo == EstadoDenuncia.abierta) {
             throw new ReglaDeNegocioException("Una denuncia solo se resuelve como revisada o descartada.");
         }
@@ -78,6 +81,9 @@ public class Denuncia {
             throw new ReglaDeNegocioException("La denuncia ya fue resuelta.");
         }
         this.estado = nuevo;
+        this.motivoResolucion = motivoResolucion == null || motivoResolucion.isBlank()
+                ? null
+                : motivoResolucion.strip();
         this.resueltoPor = revisorId;
         this.fechaResolucion = Instant.now();
     }
@@ -125,5 +131,9 @@ public class Denuncia {
 
     public Instant getFechaResolucion() {
         return fechaResolucion;
+    }
+
+    public String getMotivoResolucion() {
+        return motivoResolucion;
     }
 }

@@ -230,21 +230,28 @@ class DenunciasFlujoIntegrationTest extends SoportePostgresIT {
         String denunciaId = json.readTree(denunciar(sesion("miembro"), anuncioId, "spam", null).getBody())
                 .get("id").asText();
 
-        ResponseEntity<String> revisada = resolver(moderador, denunciaId, "revisada");
-        ResponseEntity<String> otraVez = resolver(moderador, denunciaId, "descartada");
+        ResponseEntity<String> revisada = resolver(moderador, denunciaId, "revisada", "confirmado por dos compradores");
+        ResponseEntity<String> otraVez = resolver(moderador, denunciaId, "descartada", null);
 
         assertThat(revisada.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(json.readTree(revisada.getBody()).get("estado").asText()).isEqualTo("revisada");
         assertThat(json.readTree(revisada.getBody()).get("resueltoPor").asText()).isEqualTo(moderador.id().toString());
-        assertThat(otraVez.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(json.readTree(revisada.getBody()).get("motivoResolucion").asText())
+                .as("el motivo del moderador no se pierde").isEqualTo("confirmado por dos compradores");
+        assertThat(jdbc.queryForObject("SELECT motivo_resolucion FROM denuncias WHERE id = ?",
+                String.class, UUID.fromString(denunciaId))).isEqualTo("confirmado por dos compradores");
+        assertThat(otraVez.getStatusCode()).isEqualTo( HttpStatus.UNPROCESSABLE_CONTENT);
     }
 
-    private ResponseEntity<String> resolver(Sesion moderador, String denunciaId, String estado) {
+    private ResponseEntity<String> resolver(Sesion moderador, String denunciaId, String estado, String motivo) {
         HttpHeaders cabeceras = new HttpHeaders();
         cabeceras.setContentType(MediaType.APPLICATION_JSON);
         cabeceras.setBearerAuth(moderador.token());
+        String cuerpo = motivo == null
+                ? "{\"estado\":\"" + estado + "\"}"
+                : "{\"estado\":\"" + estado + "\",\"motivo\":\"" + motivo + "\"}";
         return rest.exchange("/v1/moderacion/denuncias/" + denunciaId + "/resolucion", HttpMethod.POST,
-                new HttpEntity<>("{\"estado\":\"" + estado + "\"}", cabeceras), String.class);
+                new HttpEntity<>(cuerpo, cabeceras), String.class);
     }
 
     @Test

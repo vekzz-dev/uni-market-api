@@ -1762,6 +1762,11 @@ components:
         fechaResolucion:
           $ref: '#/components/schemas/FechaHora'
           nullable: true
+        motivoResolucion:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Justificación del cierre cuando el moderador la aporta (R19).
       description: Nunca incluye al denunciante (privacidad, R19).
     ResolucionDenunciaRequest:
       type: object

@@ -46,7 +46,8 @@ public final class DtosModeracion {
             EstadoDenuncia estado,
             Instant fechaCreacion,
             UUID resueltoPor,
-            Instant fechaResolucion) {
+            Instant fechaResolucion,
+            String motivoResolucion) {
 
         public static DenunciaPanel de(Denuncia denuncia) {
             return new DenunciaPanel(
@@ -57,7 +58,8 @@ public final class DtosModeracion {
                     denuncia.getEstado(),
                     denuncia.getFechaCreacion(),
                     denuncia.getResueltoPor(),
-                    denuncia.getFechaResolucion());
+                    denuncia.getFechaResolucion(),
+                    denuncia.getMotivoResolucion());
         }
     }
 

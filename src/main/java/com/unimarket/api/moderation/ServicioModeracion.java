@@ -92,10 +92,11 @@ public class ServicioModeracion {
 
     /** Resuelve una denuncia abierta; una ya resuelta o un estado inválido → {@code 422}. */
     @Transactional
-    public DtosModeracion.DenunciaPanel resolver(UUID denunciaId, EstadoDenuncia estado, UUID actorId) {
+    public DtosModeracion.DenunciaPanel resolver(
+            UUID denunciaId, EstadoDenuncia estado, String motivo, UUID actorId) {
         Denuncia denuncia = denuncias.findById(denunciaId)
                 .orElseThrow(() -> new NoEncontradoException("La denuncia no existe."));
-        denuncia.resolver(estado, actorId);
+        denuncia.resolver(estado, motivo, actorId);
         return DtosModeracion.DenunciaPanel.de(denuncias.saveAndFlush(denuncia));
     }
 
