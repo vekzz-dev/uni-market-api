@@ -82,7 +82,14 @@ public class ServicioRecuperacion {
     }
 
     /**
-     * Cambio autenticado: verifica la actual con BCrypt y aplica la política a la nueva.
+     * Cambio autenticado: verifica la actual con BCrypt, aplica la política a la nueva y
+     * **revoca todos los refresh del usuario**.
+     *
+     * <p>La revocación es el punto: si alguien más tenía una sesión abierta, cambiar la
+     * contraseña es la reacción esperada ante un robo y debe echarlo. Sin esto su refresh
+     * seguiría siendo válido hasta 30 días. No hay forma de conservar la sesión actual sin
+     * conocer su refresh (el JWT solo trae el id de usuario), así que el cliente vuelve a
+     * iniciar sesión con la clave nueva.
      *
      * @throws ReglaDeNegocioException si la actual no coincide o la nueva viola la
      *                                 política (422)
@@ -97,6 +104,7 @@ public class ServicioRecuperacion {
             throw new ReglaDeNegocioException("La contraseña actual es incorrecta.");
         }
         usuario.setHashContrasena(contrasenas.encode(nueva));
+        sesiones.revocarTodos(usuarioId);
     }
 
     /** Emite el PIN de 15 min invalidando los activos previos en la misma transacción. */

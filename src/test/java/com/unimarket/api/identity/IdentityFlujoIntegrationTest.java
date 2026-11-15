@@ -422,6 +422,37 @@ class IdentityFlujoIntegrationTest extends SoportePostgresIT {
             assertThat(cambio.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
             assertThat(login(normalizado, "nueva-clave-1").getStatusCode()).isEqualTo(HttpStatus.OK);
         }
+
+        @Test
+        @DisplayName("Cambiar la contraseña revoca TODAS las sesiones, incluida la del intruso")
+        void cambiar_shouldRevocarTodasLasSesiones() {
+            String email = emailUnico("revoca");
+            registrar(email);
+            String normalizado = email.toLowerCase();
+            post("/v1/auth/confirmar-email",
+                    Map.of("email", normalizado, "pin", pinDeConfirmacion(normalizado)));
+
+            var sesionPropia = login(normalizado, "secreta123");
+            String acceso = sesionPropia.getBody().get("accessToken").asText();
+            String refreshPropio = sesionPropia.getBody().get("refreshToken").asText();
+            String refreshAjeno = login(normalizado, "secreta123").getBody().get("refreshToken").asText();
+
+            var cambio = postAutenticado("/v1/usuarios/me/contrasena",
+                    Map.of("contrasenaActual", "secreta123", "nuevaContrasena", "nueva-clave-1"), acceso);
+            assertThat(cambio.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+            assertThat(refrescar(refreshAjeno).getStatusCode())
+                    .as("la sesión del intruso muere").isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(refrescar(refreshPropio).getStatusCode())
+                    .as("la sesión que cambió la clave también: el cliente vuelve a entrar")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(login(normalizado, "nueva-clave-1").getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(login(normalizado, "secreta123").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        private ResponseEntity<JsonNode> refrescar(String refreshToken) {
+            return post("/v1/auth/refresh", Map.of("refreshToken", refreshToken));
+        }
     }
 
     @Nested
