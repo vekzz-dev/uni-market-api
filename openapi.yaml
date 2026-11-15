@@ -933,14 +933,122 @@ paths:
         - $ref: '#/components/parameters/Limite'
       responses:
         '200':
-          description: Panel de moderación.
+          description: Panel de moderación; cada ítem incluye `denunciasAbiertas` (R19).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ColeccionAnunciosPanel'
+                $ref: '#/components/schemas/ColeccionPanelModeracion'
         '400': { $ref: '#/components/responses/EstructuraInvalida' }
         '401': { $ref: '#/components/responses/NoAutorizado' }
         '403': { $ref: '#/components/responses/NoModerador' }
+
+  /anuncios/{anuncioId}/denuncias:
+    post:
+      tags: [Anuncios]
+      operationId: denunciarAnuncio
+      summary: Denuncia un anuncio (miembro autenticado)
+      description: |
+        Requiere sesión (`miembro` o superior). El anuncio debe ser **visible** para quien
+        denuncia: si no lo es, responde el mismo `404` que el detalle (R4). No se puede
+        denunciar el propio anuncio → `422`. Una denuncia por persona y anuncio: el segundo
+        intento → `409` (R19). La denuncia **informa, no actúa**: no retira ni oculta el
+        anuncio. Rate limiting → `429`. El denunciante nunca aparece en las respuestas.
+      parameters:
+        - $ref: '#/components/parameters/AnuncioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DenunciaRequest'
+      responses:
+        '201':
+          description: Denuncia registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DenunciaPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: Ya denunciaste este anuncio.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '422':
+          description: Anuncio propio, o `motivo=otro` sin detalle (R19).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /moderacion/denuncias:
+    get:
+      tags: [Moderacion]
+      operationId: listarDenuncias
+      summary: Cola de denuncias por estado (moderador)
+      description: |
+        FIFO por `fechaCreacion ASC` con desempate por `id`; filtro por `estado`, default
+        `abierta`. Offset + total. Nunca expone al denunciante (R19).
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/EstadoDenuncia'
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/Limite'
+      responses:
+        '200':
+          description: Cola de denuncias.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionDenuncias'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+
+  /moderacion/denuncias/{denunciaId}/resolucion:
+    post:
+      tags: [Moderacion]
+      operationId: resolverDenuncia
+      summary: Resuelve una denuncia (revisada o descartada)
+      description: |
+        Solo una denuncia `abierta` se resuelve; una ya resuelta → `422`. La resolución
+        guarda `resueltoPor` y `fechaResolucion` (R19).
+      parameters:
+        - name: denunciaId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolucionDenunciaRequest'
+      responses:
+        '200':
+          description: Denuncia resuelta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DenunciaPanel'
+        '400': { $ref: '#/components/responses/EstructuraInvalida' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '403': { $ref: '#/components/responses/NoModerador' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: Estado destino inválido o denuncia ya resuelta (R19).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
 
   /moderacion/anuncios/{anuncioId}/decisiones:
     post:
@@ -963,11 +1071,13 @@ paths:
               $ref: '#/components/schemas/DecisionModeracionRequest'
       responses:
         '200':
-          description: Decisión registrada; devuelve el anuncio actualizado.
+          description: |
+            Decisión registrada; devuelve el anuncio actualizado con `denunciasAbiertas`.
+            Retraer o rechazar cierra las denuncias abiertas como `revisada` (R19).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AnuncioPanel'
+                $ref: '#/components/schemas/PanelModeracion'
         '400': { $ref: '#/components/responses/EstructuraInvalida' }
         '401': { $ref: '#/components/responses/NoAutorizado' }
         '403':
@@ -1613,6 +1723,87 @@ components:
             $ref: '#/components/schemas/AnuncioResumen'
         paginacion:
           $ref: '#/components/schemas/PaginacionCursor'
+    MotivoDenuncia:
+      type: string
+      enum: [prohibido, falsificacion, estafa, spam, inadecuado, otro]
+    EstadoDenuncia:
+      type: string
+      enum: [abierta, revisada, descartada]
+    DenunciaRequest:
+      type: object
+      required: [motivo]
+      properties:
+        motivo:
+          $ref: '#/components/schemas/MotivoDenuncia'
+        detalle:
+          type: string
+          maxLength: 500
+          description: Obligatorio no vacío cuando `motivo` es `otro`; opcional en el resto.
+    DenunciaPanel:
+      type: object
+      required: [id, anuncioId, motivo, estado, fechaCreacion]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        anuncioId:
+          $ref: '#/components/schemas/UUID'
+        motivo:
+          $ref: '#/components/schemas/MotivoDenuncia'
+        detalle:
+          type: string
+          nullable: true
+        estado:
+          $ref: '#/components/schemas/EstadoDenuncia'
+        fechaCreacion:
+          $ref: '#/components/schemas/FechaHora'
+        resueltoPor:
+          $ref: '#/components/schemas/UUID'
+          nullable: true
+        fechaResolucion:
+          $ref: '#/components/schemas/FechaHora'
+          nullable: true
+      description: Nunca incluye al denunciante (privacidad, R19).
+    ResolucionDenunciaRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [revisada, descartada]
+        motivo:
+          type: string
+          maxLength: 500
+    PanelModeracion:
+      allOf:
+        - $ref: '#/components/schemas/AnuncioPanel'
+        - type: object
+          required: [denunciasAbiertas]
+          properties:
+            denunciasAbiertas:
+              type: integer
+              minimum: 0
+              description: Denuncias con estado `abierta` de este anuncio (R19).
+    ColeccionPanelModeracion:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PanelModeracion'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionOffset'
+    ColeccionDenuncias:
+      type: object
+      required: [datos, paginacion]
+      properties:
+        datos:
+          type: array
+          items:
+            $ref: '#/components/schemas/DenunciaPanel'
+        paginacion:
+          $ref: '#/components/schemas/PaginacionOffset'
+
     ColeccionAnunciosPanel:
       type: object
       required: [datos, paginacion]

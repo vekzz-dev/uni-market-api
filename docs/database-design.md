@@ -4,7 +4,7 @@ Documento autónomo: describe por completo el esquema de datos de **Uni Market**
 
 | Campo | Valor |
 |---|---|
-| Estado | Aprobado — implementado en V1–V7 y verificado contra PostgreSQL 18 |
+| Estado | Aprobado — implementado en V1–V8 y verificado contra PostgreSQL 18 |
 | Última actualización | 2026-10-14 |
 | Fecha | 2026-10-09 |
 | Motor / migraciones | PostgreSQL 18 (última versión mayor vigente; PostgreSQL no publica ediciones "LTS": soporte de 5 años por versión mayor); Flyway (versionadas, forward-only) |
@@ -138,7 +138,7 @@ No declara `fecha_actualizacion` (los mensajes son inmutables).
 | las 3 | `fecha_creacion` | `timestamptz` | NO | `now()` | |
 | `tokens_refresh` | `familia_id` | `uuid` | NO | — | Agrupa la familia de rotación |
 | `tokens_refresh` | `fecha_revocacion` | `timestamptz` | SÍ | — | Revocación server-side |
-### 3.1 Índices (18, exactos)
+### 3.1 Índices (20, exactos)
 
 | Índice | Columnas / definición | Patrón de query que sirve |
 |---|---|---|
@@ -156,6 +156,8 @@ No declara `fecha_actualizacion` (los mensajes son inmutables).
 | `ux_usuarios_email_activo` | UNIQUE `usuarios(lower(email)) WHERE fecha_eliminacion IS NULL` | Unicidad case-insensitive entre cuentas activas |
 | `idx_usuarios_nombre_trgm` | GIN sobre `usuarios(lower(nombre))` con `pg_trgm` | Búsqueda del panel admin por nombre (`lower(nombre) LIKE '%término%'`) |
 | `idx_usuarios_email_trgm` | GIN sobre `usuarios(lower(email))` con `pg_trgm` | Búsqueda del panel admin por email |
+| `idx_denuncias_anuncio_estado` | `denuncias(anuncio_id, estado)` | Conteo de denuncias abiertas por anuncio |
+| `idx_denuncias_estado_creacion` | `denuncias(estado, fecha_creacion, id)` | Cola FIFO de denuncias; el `id` desempata timestamps iguales |
 | `idx_categorias_orden` | `categorias(orden)` | Reordenamiento de categorías |
 | `ux_tokens_email_activos` | UNIQUE sobre `tokens_verificacion_email(usuario_id) WHERE fecha_uso IS NULL` | A lo sumo un token activo por usuario; invalidar los previos al reenviar (R11) |
 | `ux_tokens_reset_activos` | UNIQUE sobre `tokens_restablecimiento_contrasena(usuario_id) WHERE fecha_uso IS NULL` | Ídem para el reset (R11) |
@@ -181,6 +183,10 @@ No se declaran `idx_mensajes_conversacion` ni `idx_anuncios_estado`: quedan cubi
 | `chk_origen_rechazo_consistente` | `(estado_revision = 'rechazado') = (origen_rechazo IS NOT NULL)` | `anuncios` |
 | `chk_intentos_verificacion_no_negativos` | `intentos >= 0` | `tokens_verificacion_email` |
 | `chk_intentos_reset_no_negativos` | `intentos >= 0` | `tokens_restablecimiento_contrasena` |
+| `denuncias_motivo_check` | `motivo IN ('prohibido','falsificacion','estafa','spam','inadecuado','otro')` | `denuncias` |
+| `denuncias_estado_check` | `estado IN ('abierta','revisada','descartada')` | `denuncias` |
+| `chk_detalle_obligatorio_en_otro` | `motivo <> 'otro' OR (detalle IS NOT NULL AND btrim(detalle) <> '')` | `denuncias` |
+| `chk_denuncia_resolucion_consistente` | `abierta` ⇒ sin revisor ni fecha; resuelta ⇒ con ambos | `denuncias` |
 | `chk_icono_longitud` | `char_length(icono) <= 10` | `categorias` |
 ## 4. Data Dictionary
 
@@ -228,6 +234,18 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | `motivo_rechazo` | Motivo del rechazo o retracción. | SÍ / `NULL` | Obligatorio en todo rechazo/retracción; visible para el vendedor. |
 | `origen_rechazo` | Procedencia del rechazo: revisión o aprobación revocada. | SÍ / `NULL` | Dominio `rechazo`/`retraccion`; `NOT NULL` si y solo si `estado_revision = 'rechazado'`. No cambia el enum de estado: un retraído sigue siendo `rechazado`. |
 | `fecha_creacion` / `fecha_actualizacion` | Auditoría de la fila. | NO / `now()` | |
+**`denuncias`** — reporte de un anuncio por un miembro; evidencia para moderación (R19).
+
+| Atributo | Descripción | Null / Default | Reglas |
+|---|---|---|---|
+| `id` | Identificador de la denuncia. | NO / `gen_random_uuid()` | |
+| `anuncio_id` | Anuncio denunciado. | NO / — | FK `CASCADE`; una por persona y anuncio (UNIQUE con `denunciante_id`). |
+| `denunciante_id` | Miembro que denuncia. | NO / — | FK `NO ACTION`; nunca se expone en la API. |
+| `motivo` | Motivo cerrado del reporte. | NO / — | Dominio `prohibido`/`falsificacion`/`estafa`/`spam`/`inadecuado`/`otro`. |
+| `detalle` | Explicación libre. | SÍ / `NULL` | Obligatorio no vacío cuando `motivo = 'otro'`. |
+| `estado` | Situación del caso. | NO / `'abierta'` | Dominio `abierta`/`revisada`/`descartada`. |
+| `resuelto_por` / `fecha_resolucion` | Moderador y momento de la resolución. | SÍ / `NULL` | Poblados si y solo si `estado <> 'abierta'`; FK `NO ACTION`. |
+
 **`conversaciones`** — hilo de chat por anuncio entre un comprador y el vendedor.
 
 | Atributo | Descripción | Null / Default | Reglas |
@@ -289,9 +307,9 @@ Significado de negocio de cada atributo; para tipos y defaults remitirse a la se
 | Convención | Regla |
 |---|---|
 | Herramienta y nomenclatura | Flyway, integrada en el arranque de la aplicación backend (Spring Boot + Spring Data). Migraciones versionadas `V{n}__descripcion.sql` (doble guion bajo). |
-| Orden de aplicación | `V1` → `V2` → `V3` → `V4` → `V5` → `V6` → `V7`, estrictamente secuencial. |
+| Orden de aplicación | `V1` → `V2` → … → `V7` → `V8`, estrictamente secuencial. |
 | Inmutabilidad (forward-only) | Una migración aplicada NUNCA se edita: las correcciones se expresan como una migración nueva `V{n}` con número superior. |
-| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. `V6__indices_trgm_expresion_catalogo.sql`: recrea los dos GIN del catálogo sobre `lower(...)`, la expresión que realmente consulta la búsqueda. `V7__pin_intentos.sql`: columna `intentos` en las dos tablas de PIN, con CHECK no negativo (R11). |
+| Contenido por archivo | `V1__esquema_base.sql`: DDL del baseline — 5 tablas de negocio, CHECKs, UNIQUEs, 8 FKs, los 13 índices de negocio y la habilitación de `pg_trgm`. `V2__datos_categorias.sql`: seed de las 6 categorías base. `V3__tokens_identidad.sql`: las 3 tablas de tokens con sus 3 índices parciales de tokens activos, como extensión del baseline. `V4__origen_rechazo_anuncios.sql`: columna `origen_rechazo` con backfill de las filas rechazadas y los dos CHECK de procedencia (R5). `V5__indices_busqueda_usuarios.sql`: los dos GIN trigram de la búsqueda del panel admin. `V6__indices_trgm_expresion_catalogo.sql`: recrea los dos GIN del catálogo sobre `lower(...)`, la expresión que realmente consulta la búsqueda. `V7__pin_intentos.sql`: columna `intentos` en las dos tablas de PIN, con CHECK no negativo (R11). `V8__denuncias.sql`: tabla `denuncias` con UNIQUE por persona y anuncio, CHECKs de dominio y de resolución, y dos índices (R19). |
 | Seeds idempotentes | El seed usa `INSERT ... ON CONFLICT (nombre) DO NOTHING`: re-ejecutarlo no duplica categorías y el conteo se mantiene en 6. |
-| Reproducibilidad | El esquema completo se produce aplicando `V1` a `V7` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
-| Verificación | Tras la aplicación: 8 tablas presentes, 18 índices en `pg_indexes` (13 de negocio + 2 de búsqueda + 3 de tokens), los 17 CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |
+| Reproducibilidad | El esquema completo se produce aplicando `V1` a `V8` en orden sobre una base PostgreSQL 18 vacía, sin pasos manuales. |
+| Verificación | Tras la aplicación: 9 tablas presentes, 20 índices en `pg_indexes` (13 de negocio + 2 de búsqueda + 2 de denuncias + 3 de tokens), los 21 CHECKs del catálogo, 6 categorías con `orden` 1–6 y `pg_policies` vacío (sin RLS). |

@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @Tag("integration")
-@DisplayName("Esquema de BD: Flyway V1–V7 sobre PostgreSQL 18 (Testcontainers)")
+@DisplayName("Esquema de BD: Flyway V1–V8 sobre PostgreSQL 18 (Testcontainers)")
 class DbSchemaVerificationTest {
 
     /** Las 8 tablas del DBDD §1: 5 de negocio + 3 de tokens. */
@@ -52,9 +52,10 @@ class DbSchemaVerificationTest {
             "mensajes",
             "tokens_verificacion_email",
             "tokens_restablecimiento_contrasena",
-            "tokens_refresh");
+            "tokens_refresh",
+            "denuncias");
 
-    /** Los 18 índices nombrados del DBDD §3.1: 13 en V1, 3 parciales de tokens en V3 y 2 trigram en V5. */
+    /** Los 20 índices nombrados del DBDD §3.1: 13 en V1, 3 de tokens en V3, 2 trigram en V5 y 2 de denuncias en V8. */
     private static final List<String> INDICES_ESPERADOS = List.of(
             "idx_anuncios_vendedor",
             "idx_anuncios_categoria",
@@ -73,10 +74,12 @@ class DbSchemaVerificationTest {
             "ux_tokens_reset_activos",
             "ux_tokens_refresh_activos",
             "idx_usuarios_nombre_trgm",
-            "idx_usuarios_email_trgm");
+            "idx_usuarios_email_trgm",
+            "idx_denuncias_anuncio_estado",
+            "idx_denuncias_estado_creacion");
 
     /**
-     * Los 17 CHECKs nombrados del DBDD §3.2 como pares {@code tabla.nombre}: son 18 filas
+     * Los 21 CHECKs nombrados del DBDD §3.2 como pares {@code tabla.nombre}: son 22 filas
      * de {@code pg_constraint} porque {@code chk_nombre_no_vacio} existe en {@code usuarios}
      * y en {@code anuncios}.
      */
@@ -96,6 +99,10 @@ class DbSchemaVerificationTest {
             "anuncios.chk_origen_rechazo_consistente",
             "tokens_verificacion_email.chk_intentos_verificacion_no_negativos",
             "tokens_restablecimiento_contrasena.chk_intentos_reset_no_negativos",
+            "denuncias.denuncias_motivo_check",
+            "denuncias.denuncias_estado_check",
+            "denuncias.chk_detalle_obligatorio_en_otro",
+            "denuncias.chk_denuncia_resolucion_consistente",
             "conversaciones.chk_conversacion_no_propia",
             "mensajes.chk_mensaje_no_vacio");
 
@@ -128,18 +135,18 @@ class DbSchemaVerificationTest {
         }
 
         @Test
-        @DisplayName("Flyway aplica V1 a V7 desde la configuración de la aplicación")
-        void flyway_shouldApplySevenMigrations_whenContextStarts() {
+        @DisplayName("Flyway aplica V1 a V8 desde la configuración de la aplicación")
+        void flyway_shouldApplyEightMigrations_whenContextStarts() {
             List<String> versiones = jdbcTemplate.queryForList(
                     "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank",
                     String.class);
 
-            assertThat(versiones).containsExactly("1", "2", "3", "4", "5", "6", "7");
+            assertThat(versiones).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
         }
 
         @Test
-        @DisplayName("Las 8 tablas del DBDD existen en information_schema (schema public)")
-        void tablas_shouldExistAllEight_whenMigrationsApplied() {
+        @DisplayName("Las 9 tablas del DBDD existen en information_schema (schema public)")
+        void tablas_shouldExistAllNine_whenMigrationsApplied() {
             List<String> tablas = jdbcTemplate.queryForList(
                     "SELECT table_name FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
@@ -193,7 +200,7 @@ class DbSchemaVerificationTest {
 
         @Test
         @DisplayName("Los 17 CHECKs nombrados existen en pg_constraint (contype='c')")
-        void checks_shouldExistTheSeventeen_whenMigrationsApplied() {
+        void checks_shouldExistTheTwentyOne_whenMigrationsApplied() {
             List<Chequeo> chequeos = chequeos();
 
             List<String> encontrados = chequeos.stream().map(Chequeo::referencia).sorted().toList();

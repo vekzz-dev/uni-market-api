@@ -145,7 +145,7 @@ moderar → catálogo y cómo probar Resend de verdad) está en **`docs/local-te
 mvn clean verify
 ```
 
-Ejecuta la suite completa (**259 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
+Ejecuta la suite completa (**265 tests**) contra **PostgreSQL 18 real** (Testcontainers), con gate de cobertura ≥ 80 % sobre líneas. Nota para Podman rootless: si ves `Broken pipe` contra el socket, el servicio API debe correr sin timeout de inactividad — ver `odd/tasks/hardening-post-catalog.md` (fix documentado con `--timeout 0`).
 
 ## Variables de entorno
 
@@ -173,7 +173,7 @@ Ejecuta la suite completa (**259 tests**) contra **PostgreSQL 18 real** (Testcon
 | Catálogo | `/anuncios` (público, cursor) · `/anuncios/{id}` · `/categorias` (público) |
 | Vendedor | `/anuncios` (multipart) · `/anuncios/{id}/contenido` · `/anuncios/{id}/imagenes` · `/anuncios/{id}/visibilidad` · `/anuncios/{id}/vendido` · `/mis-anuncios` (filtro `estadoRevision`) · `/mis-anuncios/{id}` |
 | Mensajería | `/conversaciones` · `/mis-conversaciones` · `/conversaciones/{id}` · `/conversaciones/{id}/mensajes` · `/conversaciones/{id}/lecturas` |
-| Moderación | `/moderacion/anuncios` · `/moderacion/anuncios/{id}/decisiones` |
+| Moderación | `/moderacion/anuncios` · `/moderacion/anuncios/{id}/decisiones` · `/moderacion/denuncias` · `/anuncios/{id}/denuncias` (denunciar) |
 | Admin | `/admin/usuarios` (+ `/rol`, `/habilitacion`) · `/categorias` (POST/PATCH/DELETE) |
 
 ## Estructura
